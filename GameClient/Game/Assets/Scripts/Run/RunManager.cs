@@ -5,10 +5,10 @@ using UnityEngine;
 public enum RunPhase
 {
     None,
-    Placement,  // 배치 단계: 적 없음, 영웅 자유 배치, '전투 시작' 버튼 대기
+    Placement,  // 배치 단계: 영웅 자유 배치 + 장비 드래그 장착 + '전투 시작' 버튼
     Battle,     // 교전 중
+    Loot,       // 전투 승리 → 획득 아이템 팝업
     Recruit,    // 영입 선택 (※ 현재 보류 — 이벤트 꺼둠)
-    Prep,       // 정비 (장비 장착/이전) → 다음 전투
     RunClear,
     RunFailed,
 }
@@ -18,8 +18,8 @@ public enum RunPhase
 ///
 /// 흐름:
 ///   StartRun(시작 3명)
-///   → Placement(영웅 배치) → BeginCombat(시작 버튼) → Battle
-///   → 승리 → 장비 드랍 → [영입: 보류] → Prep → 다음 Placement ...
+///   → Placement(영웅 배치 + 장비 장착) → BeginCombat(시작 버튼) → Battle
+///   → 승리 → 장비 드랍 → [영입: 보류] → 다음 Placement ...
 ///   → 마지막 전투 승리 → RunClear (미해금 영웅 해금 판정 + 영구 저장)
 ///   → 패배 시 즉시 RunFailed (RunState 폐기 = 장비/파티 소멸)
 /// </summary>
@@ -38,6 +38,7 @@ public class RunManager : MonoBehaviour
     public RunPhase Phase { get; private set; } = RunPhase.None;
 
     public List<HeroDefinition> CurrentCandidates { get; } = new List<HeroDefinition>();
+    public List<EquipmentDefinition> LastDrops { get; } = new List<EquipmentDefinition>();
     public List<string> LastUnlockedHeroNames { get; } = new List<string>();
 
     public event Action<RunPhase> OnPhaseChanged;
@@ -57,11 +58,19 @@ public class RunManager : MonoBehaviour
         EnterPlacement();
     }
 
+    /// <summary>임시 로비: 해금 영웅 중 앞의 3명으로 런 시작 (영웅 선택 UI는 추후)</summary>
+    public void StartDefaultRun()
+    {
+        var unlocked = Profile.GetUnlockedHeroes(heroDatabase);
+        var starters = unlocked.GetRange(0, Mathf.Min(RunState.StartPartySize, unlocked.Count));
+        StartRun(starters);
+    }
+
     // ---------- 배치 → 전투 ----------
 
     void EnterPlacement()
     {
-        Run.inBattle = true; // 배치 시점부터 장비 변경 잠금 (GDD 8)
+        Run.inBattle = false; // 배치 = '전투 사이' → 장비 변경 허용 (GDD 8)
         battleController.SetupBattle(Run, config); // 영웅만 스폰, AI 정지 상태
         SetPhase(RunPhase.Placement);
     }
@@ -70,6 +79,7 @@ public class RunManager : MonoBehaviour
     public void BeginCombat()
     {
         if (Phase != RunPhase.Placement) return;
+        Run.inBattle = true; // 이 순간부터 장비 변경 잠금 (GDD 8: 전투 중 변경 불가)
         SetPhase(RunPhase.Battle);
         battleController.BeginCombat();
     }
@@ -81,6 +91,21 @@ public class RunManager : MonoBehaviour
         Run.inBattle = false;
         GrantEquipmentDrops();
 
+        // 마지막 전투면 바로 클리어 처리 (런 종료 시 장비는 소멸 → 전리품 팝업 생략)
+        if (Run.battleNumber >= config.battlesPerRun)
+        {
+            FinishRunClear();
+            return;
+        }
+
+        SetPhase(RunPhase.Loot); // 획득 아이템 팝업 표시
+    }
+
+    /// <summary>전리품 팝업의 '확인' 버튼이 호출</summary>
+    public void ConfirmLoot()
+    {
+        if (Phase != RunPhase.Loot) return;
+
         if (ShouldRecruitNow())
         {
             GenerateCandidates();
@@ -88,7 +113,7 @@ public class RunManager : MonoBehaviour
         }
         else
         {
-            EnterPrepOrClear();
+            Advance();
         }
     }
 
@@ -122,7 +147,7 @@ public class RunManager : MonoBehaviour
             pool.RemoveAt(idx);
         }
 
-        if (CurrentCandidates.Count == 0) EnterPrepOrClear();
+        if (CurrentCandidates.Count == 0) Advance();
     }
 
     public void ChooseRecruit(int candidateIndex)
@@ -136,22 +161,15 @@ public class RunManager : MonoBehaviour
         Run.recruitChancesLeft--;
         CurrentCandidates.Clear();
 
-        EnterPrepOrClear();
+        Advance();
     }
 
-    // ---------- 정비 → 다음 전투 / 런 종료 ----------
+    // ---------- 다음 전투(배치) ----------
 
-    void EnterPrepOrClear()
+    void Advance()
     {
-        if (Run.battleNumber >= config.battlesPerRun) FinishRunClear();
-        else SetPhase(RunPhase.Prep);
-    }
-
-    public void ContinueToNextBattle()
-    {
-        if (Phase != RunPhase.Prep) return;
         Run.battleNumber++;
-        EnterPlacement();
+        EnterPlacement(); // 배치 화면에서 장비 장착 + 재배치 후 다음 전투
     }
 
     void FinishRunClear()
@@ -171,9 +189,14 @@ public class RunManager : MonoBehaviour
 
     void GrantEquipmentDrops()
     {
+        LastDrops.Clear();
         if (equipmentPool.Count == 0) return;
         for (int i = 0; i < config.equipmentDropsPerBattle; i++)
-            Run.inventory.Add(equipmentPool[UnityEngine.Random.Range(0, equipmentPool.Count)]);
+        {
+            var item = equipmentPool[UnityEngine.Random.Range(0, equipmentPool.Count)];
+            Run.inventory.Add(item);
+            LastDrops.Add(item); // 팝업 표시용
+        }
     }
 
     void SetPhase(RunPhase phase)

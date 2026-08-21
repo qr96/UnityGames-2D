@@ -12,7 +12,7 @@ using UnityEngine;
 /// </summary>
 public class BattleController : MonoBehaviour
 {
-    public PotionButton potionButton; // 부트스트랩/인스펙터에서 주입
+    public ConsumableBar consumableBar; // 부트스트랩/인스펙터에서 주입
 
     /// <summary>교전 진행 중인가. false면 영웅/적 AI 정지 (배치 단계 포함).</summary>
     public static bool CombatActive { get; private set; }
@@ -56,8 +56,8 @@ public class BattleController : MonoBehaviour
         remainingToSpawn = config.baseEnemyCount + battleIdx * config.enemyCountGrowth;
         statMultiplier = 1f + battleIdx * config.enemyStatGrowth;
 
-        // GDD 4: 포션은 전투당 N개 지급
-        if (potionButton != null) potionButton.SetCount(config.potionsPerBattle);
+        // GDD 4: 포션은 전투당 N개 지급 (소모품 바에 오른쪽부터 표시)
+        if (consumableBar != null) consumableBar.SetPotions(config.potionsPerBattle);
     }
 
     // ---------- 교전 ----------
@@ -183,12 +183,13 @@ public class BattleController : MonoBehaviour
 
     static Vector3[] DefaultHeroSlots(int count)
     {
-        // 배치 단계의 초기 위치일 뿐 — 플레이어가 자유롭게 재배치
+        // 배치 단계의 초기 위치일 뿐 — 플레이어가 자유롭게 재배치.
+        // 하단 UI(장비 바 등)와 겹치지 않도록 전장 중하단에 배치.
         var slots = new Vector3[count];
         for (int i = 0; i < count; i++)
         {
             float t = count <= 1 ? 0.5f : (float)i / (count - 1);
-            slots[i] = new Vector3(Mathf.Lerp(-2.4f, 2.4f, t), -3.2f - Mathf.Abs(t - 0.5f) * 1.6f, 0f);
+            slots[i] = new Vector3(Mathf.Lerp(-2.4f, 2.4f, t), -1.6f - Mathf.Abs(t - 0.5f) * 1.2f, 0f);
         }
         return slots;
     }

@@ -25,6 +25,9 @@ public class Hero : Unit
     bool isHealer;
     float healPower;
     float healRange;
+    bool usesProjectile;
+    float projectileSpeed;
+    Color projectileColor;
     float wiggleSpeed = 20f;
     float wiggleAngle = 12f;
 
@@ -48,15 +51,18 @@ public class Hero : Unit
         SetMaxHP(instance.GetStat(StatType.MaxHP));
 
         // GDD 8: 기본 공격/스킬이 참조할 공통 스탯은 정의에서 개별 지정
-        attackPower    = instance.GetStat(def.basicAttackPowerStat);
-        healPower      = instance.GetStat(def.healPowerStat);
+        attackPower = instance.GetStat(def.basicAttackPowerStat);
+        healPower = instance.GetStat(def.healPowerStat);
 
-        attackRange    = instance.GetStat(StatType.AttackRange);
+        attackRange = instance.GetStat(StatType.AttackRange);
         attackInterval = Mathf.Max(0.05f, instance.GetStat(StatType.AttackInterval));
-        moveSpeed      = instance.GetStat(StatType.MoveSpeed);
-        healRange      = instance.GetStat(StatType.HealRange);
+        moveSpeed = instance.GetStat(StatType.MoveSpeed);
+        healRange = instance.GetStat(StatType.HealRange);
 
-        isHealer    = def.isHealer;
+        isHealer = def.isHealer;
+        usesProjectile = def.usesProjectile;
+        projectileSpeed = def.projectileSpeed;
+        projectileColor = def.color;
         wiggleSpeed = def.wiggleSpeed;
         wiggleAngle = def.wiggleAngle;
 
@@ -100,7 +106,15 @@ public class Hero : Unit
             CurrentState = State.Idle;
             return;
         }
-        Pursue(enemy, attackRange, () => enemy.TakeDamage(attackPower));
+        Pursue(enemy, attackRange, () => Attack(enemy));
+    }
+
+    void Attack(Unit enemy)
+    {
+        if (usesProjectile)
+            UnitFactory.SpawnProjectile(transform.position, enemy, attackPower, projectileSpeed, projectileColor);
+        else
+            enemy.TakeDamage(attackPower);
     }
 
     /// <summary>사거리 밖이면 접근, 안이면 주기마다 행동(공격/힐)</summary>

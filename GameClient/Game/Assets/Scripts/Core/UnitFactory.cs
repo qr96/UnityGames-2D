@@ -50,6 +50,18 @@ public static class UnitFactory
         return enemy;
     }
 
+    /// <summary>투사체 생성. 비주얼 교체 지점 (아트 시 프리팹으로).</summary>
+    public static Projectile SpawnProjectile(Vector3 from, Unit target, float damage, float speed, Color color)
+    {
+        var go = new GameObject("Projectile");
+        go.transform.position = from;
+        MakeVisual(go.transform, Circle, color, 0.25f, sortingOrder: 6);
+
+        var p = go.AddComponent<Projectile>();
+        p.Init(target, damage, speed);
+        return p;
+    }
+
     /// <summary>
     /// 스폰 예고 마커 생성. 연출 교체 지점: 아트가 들어오면 이 함수의 비주얼 구성만
     /// 마법진 프리팹/파티클 Instantiate로 바꾸면 됨 (SpawnMarker 로직은 그대로).

@@ -28,6 +28,10 @@ public class HeroDefinition : ScriptableObject
     public float healPower = 12f;
     public float healRange = 3f;
 
+    [Header("원거리 투사체")]
+    public bool usesProjectile;          // 기본 공격이 투사체로 날아가는가
+    public float projectileSpeed = 9f;
+
     [Header("행동별 참조 스탯 정의 (GDD 8)")]
     public StatType basicAttackPowerStat = StatType.Attack;
     public StatType healPowerStat = StatType.HealPower;
@@ -40,13 +44,13 @@ public class HeroDefinition : ScriptableObject
     {
         switch (type)
         {
-            case StatType.MaxHP:          return maxHP;
-            case StatType.Attack:         return attack;
-            case StatType.AttackRange:    return attackRange;
+            case StatType.MaxHP: return maxHP;
+            case StatType.Attack: return attack;
+            case StatType.AttackRange: return attackRange;
             case StatType.AttackInterval: return attackInterval;
-            case StatType.MoveSpeed:      return moveSpeed;
-            case StatType.HealPower:      return healPower;
-            case StatType.HealRange:      return healRange;
+            case StatType.MoveSpeed: return moveSpeed;
+            case StatType.HealPower: return healPower;
+            case StatType.HealRange: return healRange;
             default: return 0f;
         }
     }

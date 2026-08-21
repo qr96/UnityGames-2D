@@ -39,14 +39,67 @@ public class RunState
 
     // ---------- 장비 규칙 (GDD 8) ----------
 
-    /// <summary>인벤토리 → 영웅 슬롯. 전투 중에는 불가.</summary>
+    /// <summary>인벤토리 → 영웅의 빈 슬롯에 장착 (앞에서부터 채움). 전투 중에는 불가.</summary>
     public bool Equip(HeroRunInstance hero, EquipmentDefinition item)
     {
-        if (inBattle) return false;          // 전투 중 장비 변경 불가
+        return hero != null && EquipAt(hero, item, hero.equipment.Count);
+    }
+
+    /// <summary>
+    /// 인벤토리 → 영웅의 특정 슬롯에 장착.
+    /// 점유된 슬롯이면 기존 장비를 인벤토리로 돌려보내고 교체 (드래그 스왑 탈착).
+    /// </summary>
+    public bool EquipAt(HeroRunInstance hero, EquipmentDefinition item, int slotIndex)
+    {
+        if (inBattle) return false;          // 전투 중 장비 변경 불가 (GDD 8)
         if (hero == null || item == null) return false;
-        if (!hero.HasFreeSlot) return false; // 자유 슬롯 3칸
-        if (!inventory.Remove(item)) return false;
+        if (slotIndex < 0 || slotIndex >= HeroRunInstance.MaxEquipSlots) return false;
+        if (!inventory.Contains(item)) return false;
+
+        if (slotIndex < hero.equipment.Count)
+        {
+            // 교체: 기존 장비는 인벤토리로 (탈착 → 다른 영웅에게 이전 가능)
+            inventory.Remove(item);
+            inventory.Add(hero.equipment[slotIndex]);
+            hero.equipment[slotIndex] = item;
+            return true;
+        }
+
+        // 빈 슬롯: 앞에서부터 채워 장착
+        if (!hero.HasFreeSlot) return false;
+        inventory.Remove(item);
         hero.equipment.Add(item);            // 카테고리 제한 없음, 동일 장비 중첩 가능
+        return true;
+    }
+
+    /// <summary>
+    /// 장착된 장비를 다른 칸으로 이동 (영웅 간 이전 / 같은 영웅 내 교환).
+    /// 목적지가 점유 칸이면 두 장비를 서로 교환. 빈 칸이면 이동 (같은 영웅의 빈 칸은 의미 없어 거부).
+    /// </summary>
+    public bool MoveEquipped(HeroRunInstance from, int fromIndex, HeroRunInstance to, int toIndex)
+    {
+        if (inBattle) return false; // 전투 중 장비 변경 불가 (GDD 8)
+        if (from == null || to == null) return false;
+        if (fromIndex < 0 || fromIndex >= from.equipment.Count) return false;
+        if (toIndex < 0 || toIndex >= HeroRunInstance.MaxEquipSlots) return false;
+        if (from == to && fromIndex == toIndex) return false;
+
+        EquipmentDefinition item = from.equipment[fromIndex];
+
+        if (toIndex < to.equipment.Count)
+        {
+            // 교환 (영웅 간 또는 같은 영웅의 칸끼리)
+            EquipmentDefinition other = to.equipment[toIndex];
+            to.equipment[toIndex] = item;
+            from.equipment[fromIndex] = other;
+            return true;
+        }
+
+        // 빈 칸으로 이동
+        if (from == to) return false;        // 같은 영웅의 빈 칸 = 제자리 (리스트는 앞에서부터 채워짐)
+        if (!to.HasFreeSlot) return false;
+        from.equipment.RemoveAt(fromIndex);
+        to.equipment.Add(item);
         return true;
     }
 
