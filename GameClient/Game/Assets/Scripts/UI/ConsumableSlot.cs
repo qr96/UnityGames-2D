@@ -45,16 +45,18 @@ public class ConsumableSlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
             return;
         }
         BeginDragOverlay();
+        bar.ShowRange(e.position); // 투척 범위 표시 시작
     }
 
     public void OnDrag(PointerEventData e)
     {
         if (icon != null) icon.rectTransform.position = e.position;
+        bar.ShowRange(e.position); // 착탄 예상 지점 따라 이동
     }
 
     public void OnEndDrag(PointerEventData e)
     {
-        bar.TryUseAt(index, e.position);
+        bar.TryUseAt(index, e); // 바 위 취소/범위 판정을 위해 이벤트 자체를 전달
         ResetIcon();
         EndDragOverlay();
     }
