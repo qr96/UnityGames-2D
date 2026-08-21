@@ -11,6 +11,7 @@ public enum Team { Hero, Enemy }
 public abstract class Unit : MonoBehaviour
 {
     [HideInInspector] public Team team;
+    [HideInInspector] public float radius = 0.4f; // 겹침 방지(UnitSeparation) 판정 반경
 
     public float MaxHP { get; protected set; }
     public float CurrentHP { get; protected set; }

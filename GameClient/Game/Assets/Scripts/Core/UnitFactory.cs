@@ -24,6 +24,7 @@ public static class UnitFactory
 
         Hero hero = go.AddComponent<Hero>();
         hero.Init(instance); // 장비 반영된 최종 스탯으로 초기화
+        hero.radius = def.size * 0.5f; // 겹침 방지 반경 = 비주얼 반지름
 
         AddHealthBar(hero, new Color(0.3f, 1f, 0.4f));
         return hero;
@@ -32,11 +33,13 @@ public static class UnitFactory
     public static Enemy SpawnEnemy(string name, Vector3 pos,
         float maxHP, float dmg, float range, float interval, float speed)
     {
+        const float enemySize = 0.85f;
         var go = new GameObject($"Enemy_{name}");
         go.transform.position = pos;
-        MakeVisual(go.transform, Circle, new Color(0.85f, 0.3f, 0.3f), 0.85f, sortingOrder: 5);
+        MakeVisual(go.transform, Circle, new Color(0.85f, 0.3f, 0.3f), enemySize, sortingOrder: 5);
 
         Enemy enemy = go.AddComponent<Enemy>();
+        enemy.radius = enemySize * 0.5f;
         var data = ScriptableObject.CreateInstance<EnemyData>();
         data.enemyName = name;
         data.maxHP = maxHP;

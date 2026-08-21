@@ -21,6 +21,7 @@ public class DevBootstrap : MonoBehaviour
     {
         SetupCamera();
         new GameObject("GrabController").AddComponent<GrabController>();
+        new GameObject("UnitSeparation").AddComponent<UnitSeparation>(); // 유닛 겹침 방지
 
         battleController = new GameObject("BattleController").AddComponent<BattleController>();
 
@@ -72,20 +73,20 @@ public class DevBootstrap : MonoBehaviour
     {
         var db = ScriptableObject.CreateInstance<HeroDatabase>();
         db.heroes.Add(MakeHero("knight", "기사", new Color(0.35f, 0.55f, 1f), 0.95f, true,
-            hp: 140f, atk: 12f, range: 1.1f, interval: 0.9f, speed: 2.6f));
+            hp: 140f, atk: 12f, range: 1.1f, interval: 0.9f, speed: 1.8f));
         db.heroes.Add(MakeHero("archer", "궁수", new Color(1f, 0.8f, 0.25f), 0.80f, true,
-            hp: 90f, atk: 16f, range: 3.5f, interval: 1.2f, speed: 2.8f,
+            hp: 90f, atk: 16f, range: 3.5f, interval: 1.2f, speed: 2.0f,
             projectile: true));
         db.heroes.Add(MakeHero("healer", "사제", new Color(0.45f, 1f, 0.55f), 0.80f, true,
-            hp: 80f, atk: 6f, range: 2.5f, interval: 1.1f, speed: 2.4f,
+            hp: 80f, atk: 6f, range: 2.5f, interval: 1.1f, speed: 1.7f,
             healer: true, healPower: 14f, healRange: 3.2f));
         db.heroes.Add(MakeHero("rogue", "도적", new Color(0.6f, 0.6f, 0.7f), 0.75f, false,
-            hp: 75f, atk: 20f, range: 1.0f, interval: 0.6f, speed: 3.4f));
+            hp: 75f, atk: 20f, range: 1.0f, interval: 0.6f, speed: 2.4f));
         db.heroes.Add(MakeHero("mage", "마법사", new Color(0.75f, 0.45f, 1f), 0.80f, false,
-            hp: 70f, atk: 26f, range: 4.2f, interval: 1.8f, speed: 2.2f,
+            hp: 70f, atk: 26f, range: 4.2f, interval: 1.8f, speed: 1.6f,
             projectile: true));
         db.heroes.Add(MakeHero("paladin", "성기사", new Color(1f, 0.95f, 0.7f), 1.00f, false,
-            hp: 180f, atk: 10f, range: 1.2f, interval: 1.1f, speed: 2.2f));
+            hp: 180f, atk: 10f, range: 1.2f, interval: 1.1f, speed: 1.5f));
         return db;
     }
 

@@ -105,7 +105,7 @@ public class BattleController : MonoBehaviour
             Enemy e = UnitFactory.SpawnEnemy("Slime", pos,
                 maxHP: 60f * statMultiplier,
                 dmg: 8f * statMultiplier,
-                range: 1f, interval: 1.2f, speed: 1.8f);
+                range: 1f, interval: 1.2f, speed: 1.4f);
             spawned.Add(e.gameObject);
         });
     }
