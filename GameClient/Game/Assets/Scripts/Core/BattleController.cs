@@ -4,17 +4,18 @@ using UnityEngine;
 
 /// <summary>
 /// 전투 1회: 배치(SetupBattle) → 교전(BeginCombat) → 승패 보고.
+/// 전투장은 현재 장소의 월드 좌표 위에 열림 (GDD 9·10 — 카메라 줌 연속 연출).
 ///
 /// - 배치 단계: 영웅만 스폰, CombatActive=false → 모든 유닛 AI 정지 (잡기/배치는 가능)
-/// - 교전: 스테이지 총 마릿수를 spawnInterval마다 1~2마리씩,
-///          '영웅 주변을 제외한 전장 아무 위치'에 랜덤 스폰
-/// - 승리: 스폰 예정 물량 소진 + 살아있는 적 없음 / 패배: 파티 전멸
+/// - 교전: 총 마릿수를 spawnInterval마다 예고 마커 후, '영웅 주변 제외 전투장 랜덤 위치'에 스폰
+/// - 승리: 스폰 물량 소진 + 살아있는 적 없음 / 패배: 파티 전멸
+/// - 탐험 중에는 파티가 현재 장소에 서 있음 (ShowPartyAt — 전투 종료 위치 보존)
 /// </summary>
 public class BattleController : MonoBehaviour
 {
     public ConsumableBar consumableBar; // 부트스트랩/인스펙터에서 주입
 
-    /// <summary>교전 진행 중인가. false면 영웅/적 AI 정지 (배치 단계 포함).</summary>
+    /// <summary>교전 진행 중인가. false면 영웅/적 AI 정지 (배치·탐험 포함).</summary>
     public static bool CombatActive { get; private set; }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -23,16 +24,18 @@ public class BattleController : MonoBehaviour
     readonly List<GameObject> spawned = new List<GameObject>();
 
     RunConfig config;
-    int remainingToSpawn;   // 아직 스폰 예약되지 않은 적 수
-    int pendingSpawns;      // 예고 중(마커 표시, 아직 등장 전)인 적 수
+    Vector3 arenaCenter;              // 전투장 중심 = 현재 장소의 월드 좌표
+    LocationDefinition fieldLocation; // 현재 전장/파티가 서 있는 장소
+    int remainingToSpawn;             // 아직 스폰 예약되지 않은 적 수
+    int pendingSpawns;                // 예고 중(마커 표시, 아직 등장 전)인 적 수
     float statMultiplier;
-    bool judging;           // 승패 판정 활성 여부
+    bool judging;                     // 승패 판정 활성 여부
     Coroutine spawnRoutine;
 
     // ---------- 배치 단계 ----------
 
     /// <summary>영웅만 스폰하고 AI 정지 상태로 대기. RunManager가 Placement 진입 시 호출.</summary>
-    public void SetupBattle(RunState run, RunConfig config)
+    public void SetupBattle(RunState run, RunConfig config, LocationDefinition location)
     {
         this.config = config;
         CombatActive = false;
@@ -41,23 +44,56 @@ public class BattleController : MonoBehaviour
         StopSpawning();
         ClearField();
 
+        fieldLocation = location;
+        arenaCenter = LocationCenter(location);
+
         // 파티 스폰: 사망했던 영웅도 다음 전투에는 정상 참여 (GDD 4: 영구 사망 아님)
+        SpawnParty(run);
+
+        // 이번 전투의 스폰 물량/강도 (전투 횟수 기반 스케일링)
+        int battleIdx = Mathf.Max(0, run.battleNumber - 1);
+        remainingToSpawn = config.baseEnemyCount + battleIdx * config.enemyCountGrowth;
+        statMultiplier = 1f + battleIdx * config.enemyStatGrowth;
+        if (location != null && location.type == LocationType.Landmark)
+            statMultiplier *= config.landmarkStatMultiplier; // 보스 지역 강화
+
+        // GDD 4: 포션은 전투당 N개 지급 (소모품 바에 오른쪽부터 표시)
+        if (consumableBar != null) consumableBar.SetPotions(config.potionsPerBattle);
+    }
+
+    /// <summary>
+    /// 탐험 진입 시 파티를 현재 장소에 표시 (RunManager가 호출).
+    /// 방금 이 장소에서 전투를 끝냈다면 그 자리 그대로 유지 — 전투 종료 위치 보존.
+    /// 다른 장소(전투 없는 마을 등)에 도착했다면 그 장소 중앙에 파티를 배치.
+    /// </summary>
+    public void ShowPartyAt(RunState run, LocationDefinition location)
+    {
+        if (fieldLocation == location && UnitRegistry.AnyAlive(Team.Hero))
+            return; // 전투가 끝난 위치 그대로 유지
+
+        ClearField();
+        fieldLocation = location;
+        arenaCenter = LocationCenter(location);
+        SpawnParty(run);
+    }
+
+    void SpawnParty(RunState run)
+    {
         Vector3[] slots = DefaultHeroSlots(run.party.Count);
         for (int i = 0; i < run.party.Count; i++)
         {
             HeroRunInstance inst = run.party[i];
-            Hero hero = UnitFactory.SpawnHero(inst, slots[i]);
+            Hero hero = UnitFactory.SpawnHero(inst, arenaCenter + slots[i]);
             hero.OnDeath += _ => inst.diedThisRun = true; // 해금 조건 추적 (GDD 7)
             spawned.Add(hero.gameObject);
         }
+    }
 
-        // 이번 스테이지 스폰 물량/강도
-        int battleIdx = run.battleNumber - 1;
-        remainingToSpawn = config.baseEnemyCount + battleIdx * config.enemyCountGrowth;
-        statMultiplier = 1f + battleIdx * config.enemyStatGrowth;
-
-        // GDD 4: 포션은 전투당 N개 지급 (소모품 바에 오른쪽부터 표시)
-        if (consumableBar != null) consumableBar.SetPotions(config.potionsPerBattle);
+    static Vector3 LocationCenter(LocationDefinition location)
+    {
+        return location != null
+            ? new Vector3(location.worldPosition.x, location.worldPosition.y, 0f)
+            : Vector3.zero;
     }
 
     // ---------- 교전 ----------
@@ -110,14 +146,14 @@ public class BattleController : MonoBehaviour
         });
     }
 
-    /// <summary>영웅 주변(minSpawnDistanceFromHeroes)을 제외한 전장 랜덤 위치.</summary>
+    /// <summary>영웅 주변(minSpawnDistanceFromHeroes)을 제외한 전투장 랜덤 위치.</summary>
     Vector3 FindSpawnPosition()
     {
         List<Unit> heroes = UnitRegistry.GetAll(Team.Hero);
 
         for (int attempt = 0; attempt < 30; attempt++)
         {
-            var p = new Vector3(
+            Vector3 p = arenaCenter + new Vector3(
                 Random.Range(config.spawnAreaMin.x, config.spawnAreaMax.x),
                 Random.Range(config.spawnAreaMin.y, config.spawnAreaMax.y), 0f);
 
@@ -133,8 +169,8 @@ public class BattleController : MonoBehaviour
             if (clear) return p;
         }
 
-        // 영웅들이 전장을 넓게 덮어 유효 위치를 못 찾으면 상단 가장자리로 폴백
-        return new Vector3(
+        // 영웅들이 전투장을 넓게 덮어 유효 위치를 못 찾으면 상단 가장자리로 폴백
+        return arenaCenter + new Vector3(
             Random.Range(config.spawnAreaMin.x, config.spawnAreaMax.x),
             config.spawnAreaMax.y, 0f);
     }
@@ -174,17 +210,19 @@ public class BattleController : MonoBehaviour
         }
     }
 
-    void ClearField()
+    /// <summary>전장 정리 (런 시작 시 RunManager가 호출)</summary>
+    public void ClearField()
     {
         foreach (var go in spawned)
             if (go != null) Destroy(go);
         spawned.Clear();
+        fieldLocation = null;
     }
 
-    static Vector3[] DefaultHeroSlots(int count)
+    public static Vector3[] DefaultHeroSlots(int count)
     {
         // 배치 단계의 초기 위치일 뿐 — 플레이어가 자유롭게 재배치.
-        // 하단 UI(장비 바 등)와 겹치지 않도록 전장 중하단에 배치.
+        // 하단 UI(장비 바 등)와 겹치지 않도록 전투장 중하단에 배치.
         var slots = new Vector3[count];
         for (int i = 0; i < count; i++)
         {

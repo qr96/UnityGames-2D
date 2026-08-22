@@ -17,6 +17,10 @@ public class UnitSeparation : MonoBehaviour
 
     void LateUpdate()
     {
+        // 이동 연출 중에는 대형 이동을 방해하지 않음
+        if (RunManager.Instance != null && RunManager.Instance.Phase == RunPhase.Travel)
+            return;
+
         // 전장의 살아있는 유닛 전체 (팀 무관)
         buffer.Clear();
         buffer.AddRange(UnitRegistry.GetAll(Team.Hero));

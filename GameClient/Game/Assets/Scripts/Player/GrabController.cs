@@ -22,6 +22,17 @@ public class GrabController : MonoBehaviour
     {
         if (cam == null) { cam = Camera.main; if (cam == null) return; }
 
+        // 잡기는 배치/전투 중에만 (이동 연출·탐험 중 조작 차단 — GDD 5)
+        if (RunManager.Instance != null)
+        {
+            RunPhase phase = RunManager.Instance.Phase;
+            if (phase != RunPhase.Placement && phase != RunPhase.Battle)
+            {
+                if (grabbed != null) { grabbed.Release(); grabbed = null; }
+                return;
+            }
+        }
+
         // Pointer.current: 마우스와 (기본) 터치를 통합한 포인터
         Pointer pointer = Pointer.current;
         if (pointer == null) return;

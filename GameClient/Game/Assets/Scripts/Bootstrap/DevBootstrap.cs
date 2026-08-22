@@ -34,7 +34,15 @@ public class DevBootstrap : MonoBehaviour
 
         runManager.heroDatabase = CreateDevHeroDatabase();
         runManager.equipmentPool = CreateDevEquipmentPool();
+        runManager.world = DevWorldData.Create(); // 개발용 '바람 평원' 지역
         runManager.battleController = battleController;
+        runManager.travelController = new GameObject("TravelController").AddComponent<TravelController>();
+
+        // 탐험 표현 (지형 레이어 + 장소 라벨/입력 + 카메라 연출)
+        new GameObject("WorldEnvironment").AddComponent<WorldEnvironment>();
+        var mapView = new GameObject("WorldMapView").AddComponent<WorldMapView>();
+        if (hud != null) mapView.canvas = hud.GetComponent<Canvas>();
+        mapView.cameraController = new GameObject("CameraController").AddComponent<CameraController>();
 
         // 전투 중 소모품 바 연결 (씬 UI)
         if (hud != null && hud.consumableBar != null)

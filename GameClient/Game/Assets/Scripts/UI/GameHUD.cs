@@ -74,17 +74,35 @@ public class GameHUD : MonoBehaviour
             return;
         }
 
+        LocationDefinition loc = rm.World != null ? rm.World.Current : null;
+        string locName = loc != null ? loc.displayName : "";
+
         switch (phase)
         {
+            case RunPhase.Explore:
+                string regionName = "";
+                if (rm.World != null && loc != null)
+                {
+                    var region = rm.World.world.GetRegionOf(loc);
+                    if (region != null) regionName = region.regionName + " · ";
+                }
+                SetLabel($"{regionName}이동할 장소를 선택하세요");
+                break;
+
+            case RunPhase.Travel:
+                string dest = rm.TravelDestination != null ? rm.TravelDestination.displayName : "";
+                SetLabel($"이동 중 — {dest}(으)로 향하는 길");
+                break;
+
             case RunPhase.Placement:
-                SetLabel($"전투 준비 {run.battleNumber}/{rm.config.battlesPerRun} — 영웅 배치 · 장비 장착");
+                SetLabel($"전투 준비 — {locName}");
                 // 전리품 확인 직후 넘어온 준비 화면이면 인벤토리 자동 열기
                 if (prevPhase == RunPhase.Loot) OpenInventory();
                 else CloseInventory();
                 break;
 
             case RunPhase.Battle:
-                SetLabel($"전투 {run.battleNumber}/{rm.config.battlesPerRun}");
+                SetLabel($"전투 — {locName}");
                 break;
 
             case RunPhase.Loot:
@@ -97,7 +115,7 @@ public class GameHUD : MonoBehaviour
                 break;
 
             case RunPhase.RunClear:
-                SetLabel("런 클리어!");
+                SetLabel("런 클리어! — 거인의 무덤 정복");
                 if (resultText != null) resultText.text = BuildClearText(rm);
                 break;
 
