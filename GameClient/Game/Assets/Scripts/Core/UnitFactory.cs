@@ -53,6 +53,18 @@ public static class UnitFactory
         return enemy;
     }
 
+    /// <summary>포션 투척체 생성. 비주얼 교체 지점 (아트 시 프리팹으로).</summary>
+    public static PotionProjectile SpawnPotionProjectile(
+        Vector3 start, Vector3 target, float duration, System.Action onImpact)
+    {
+        var go = new GameObject("PotionProjectile");
+        MakeVisual(go.transform, Circle, new Color(1f, 0.35f, 0.55f), 0.4f, sortingOrder: 7);
+
+        var p = go.AddComponent<PotionProjectile>();
+        p.Init(start, target, duration, arcHeight: 1.2f, onImpact);
+        return p;
+    }
+
     /// <summary>투사체 생성. 비주얼 교체 지점 (아트 시 프리팹으로).</summary>
     public static Projectile SpawnProjectile(Vector3 from, Unit target, float damage, float speed, Color color)
     {

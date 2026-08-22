@@ -39,6 +39,7 @@ public class HeroDefinition : ScriptableObject
     [Header("잡기 연출")]
     public float wiggleSpeed = 20f;
     public float wiggleAngle = 12f;
+    public float landingDelay = 0.35f; // 내려놓은 뒤 AI 재개까지의 착지 딜레이
 
     public float GetBaseStat(StatType type)
     {

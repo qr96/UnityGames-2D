@@ -30,8 +30,10 @@ public class Hero : Unit
     Color projectileColor;
     float wiggleSpeed = 20f;
     float wiggleAngle = 12f;
+    float landingDelay = 0.35f;
 
     float actTimer;
+    float landingTimer; // 착지 후 AI 재개까지 남은 시간
     Vector3 grabWorldPos;
     Transform visual;
     float wigglePhase;
@@ -65,6 +67,7 @@ public class Hero : Unit
         projectileColor = def.color;
         wiggleSpeed = def.wiggleSpeed;
         wiggleAngle = def.wiggleAngle;
+        landingDelay = def.landingDelay;
 
         visual = sr != null ? sr.transform : transform;
     }
@@ -76,6 +79,14 @@ public class Hero : Unit
         if (IsGrabbed)
         {
             UpdateGrabbed();
+            return;
+        }
+
+        // 착지 딜레이: 내려놓인 직후 잠시 제자리 (피격은 가능)
+        if (landingTimer > 0f)
+        {
+            landingTimer -= Time.deltaTime;
+            CurrentState = State.Idle;
             return;
         }
 
@@ -176,7 +187,8 @@ public class Hero : Unit
         if (!IsGrabbed) return;
         CurrentState = State.Idle;
         if (visual != null) visual.localRotation = Quaternion.identity;
-        actTimer = Mathf.Max(actTimer, 0.15f);
+        landingTimer = landingDelay; // 착지 후 잠시 정비하고 AI 재개
+        actTimer = Mathf.Max(actTimer, landingDelay);
     }
 
     void UpdateGrabbed()

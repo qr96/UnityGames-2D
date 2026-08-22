@@ -7,9 +7,10 @@ using UnityEngine.EventSystems;
 /// 현재 소모품은 포션 1종 — 전투당 지급 개수만큼 칸에 표시 (GDD 4).
 ///
 /// 사용 규칙:
-///  - 전장에 던지면 무조건 소모 — 범위 안의 영웅만 회복 (없으면 낭비)
+///  - 바 밖으로 던지면 그 순간 무조건 소모. 병이 포물선으로 날아간 뒤
+///    '착탄 시점'에 범위 안의 영웅을 회복 (GDD 4: 착탄 지점 주변)
 ///  - 바(슬롯) 위에 도로 놓는 경우에만 복구 (소모 없음)
-///  - 드래그 중 범위 원 표시: 초록 = 회복 대상 있음 / 회색 = 이대로 던지면 낭비 (경고용)
+///  - 드래그 중 범위 원 표시: 회복될 대상 있음 = 초록 / 없음 = 회색 (조준 보조용)
 ///
 /// 초기화 주의: 이 오브젝트는 전투 중에만 활성화되므로, 비활성 상태에서
 /// SetPotions가 먼저 호출될 수 있음 → OnEnable에서 슬롯 수집/표시를 항상 보정.
@@ -19,6 +20,10 @@ public class ConsumableBar : MonoBehaviour
     [Header("포션 효과 (GDD 4 — 수치 미정, 튜닝값)")]
     public float healAmount = 40f;
     public float healRadius = 1.8f;
+
+    [Header("투척 연출")]
+    public float throwDuration = 0.45f;   // 병이 날아가는 시간 (착탄 후 회복 적용)
+    public float impactFlashTime = 0.25f; // 착탄 시 범위 표시 시간
 
     static readonly Color RangeOkColor = new Color(0.45f, 1f, 0.6f, 0.28f);
     static readonly Color RangeNoTargetColor = new Color(0.7f, 0.7f, 0.7f, 0.16f);
@@ -67,23 +72,38 @@ public class ConsumableBar : MonoBehaviour
         Render();
     }
 
-    /// <summary>슬롯의 포션 투척 시도. 사용됐을 때만 true (바에 도로 놓으면 취소).</summary>
+    /// <summary>슬롯의 포션 투척. 바 위에 도로 놓는 경우에만 복구, 그 외에는 즉시 소모 후 투척 연출.</summary>
     public bool TryUseAt(int slotIndex, PointerEventData e)
     {
         HideRange();
         if (potionCount <= 0 || !IsFilled(slotIndex)) return false;
 
-        // 바(슬롯) 위에 도로 놓기 = 복구 (유일한 취소 경로)
+        // 슬롯/바 위에 도로 넣기 = 복구 (유일한 취소 경로)
         if (IsPointerOverBar(e)) return false;
 
-        // 전장에 던지면 무조건 소모 — 범위 안의 영웅만 회복 (없으면 낭비)
-        Vector3 world = ScreenToWorld(e.position);
-        foreach (Unit u in GetHeroesInRange(world))
-            u.Heal(healAmount);
+        // 바 밖 = 던지는 순간 무조건 소모. 병이 날아간 뒤 착탄 시점에 회복 적용.
+        Vector3 target = ScreenToWorld(e.position);
+        Vector3 start = ScreenToWorld(slots[slotIndex].transform.position); // 슬롯에서 날아감
 
         potionCount--;
         Render();
+
+        UnitFactory.SpawnPotionProjectile(start, target, throwDuration, () => Impact(target));
         return true;
+    }
+
+    /// <summary>착탄: 범위 표시를 잠깐 번쩍이고, 그 순간 범위 안의 영웅을 회복</summary>
+    void Impact(Vector3 target)
+    {
+        // 착탄 연출 (자리표시자 — 아트 시 교체)
+        var flash = new GameObject("PotionImpactFlash");
+        UnitFactory.MakeVisual(flash.transform, UnitFactory.Circle,
+            new Color(0.45f, 1f, 0.6f, 0.4f), healRadius * 2f, sortingOrder: 4);
+        flash.transform.position = target;
+        Destroy(flash, impactFlashTime);
+
+        foreach (Unit u in GetHeroesInRange(target))
+            u.Heal(healAmount);
     }
 
     // ---------- 투척 범위 표시 (드래그 중 ConsumableSlot이 호출) ----------
