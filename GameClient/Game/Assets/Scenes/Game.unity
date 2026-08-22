@@ -2555,6 +2555,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameHUD
   phaseLabel: {fileID: 1444769391}
+  lobbySceneName: Lobby
   startButton: {fileID: 418057602}
   inventoryButton: {fileID: 759909078}
   inventoryPanel: {fileID: 387318141}
@@ -3086,6 +3087,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DevBootstrap
   hud: {fileID: 855360305}
+  heroDatabase: {fileID: 11400000, guid: 1e90063ea7cef9c4780c7cb40277a5b1, type: 2}
+  equipmentDatabase: {fileID: 11400000, guid: 681491c9ef35fb5438014a2086876485, type: 2}
+  runConfig: {fileID: 11400000, guid: c853571468fae5f4dbe01a31efa8f215, type: 2}
+  worldDefinition: {fileID: 11400000, guid: 2b16435df39be9d49984e8dea6e7dfe6, type: 2}
 --- !u!1 &1118665208
 GameObject:
   m_ObjectHideFlags: 0

@@ -132,6 +132,50 @@ public static class UnitFactory
         hb.fill = fillRoot;
     }
 
+    // ---------- 월드 라벨 ----------
+
+    static Font labelFont;
+    static bool labelFontSearched;
+
+    /// <summary>월드 스페이스 텍스트 라벨 (TextMesh) 생성 — 자리표시자 공용</summary>
+    public static TextMesh MakeWorldLabel(Transform parent, string text, Vector3 localPos,
+        float scale = 0.07f, int sortingOrder = 6, int fontSize = 40)
+    {
+        Font font = GetLabelFont();
+        if (font == null) return null;
+
+        var go = new GameObject("Label");
+        go.transform.SetParent(parent, false);
+        go.transform.localPosition = localPos;
+        go.transform.localScale = Vector3.one * scale;
+
+        var tm = go.AddComponent<TextMesh>();
+        tm.font = font;
+        tm.fontSize = fontSize;
+        tm.characterSize = 1f;
+        tm.anchor = TextAnchor.MiddleCenter;
+        tm.alignment = TextAlignment.Center;
+        tm.color = Color.white;
+        tm.text = text;
+
+        var mr = go.GetComponent<MeshRenderer>();
+        mr.material = font.material;
+        mr.sortingOrder = sortingOrder;
+        return tm;
+    }
+
+    static Font GetLabelFont()
+    {
+        if (labelFontSearched) return labelFont;
+        labelFontSearched = true;
+        try { labelFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); } catch { }
+        if (labelFont == null)
+        {
+            try { labelFont = Resources.GetBuiltinResource<Font>("Arial.ttf"); } catch { }
+        }
+        return labelFont;
+    }
+
     // ---------- 스프라이트 생성 ----------
 
     static Sprite CreateCircleSprite(int size)

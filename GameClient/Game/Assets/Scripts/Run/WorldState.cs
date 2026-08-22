@@ -33,12 +33,14 @@ public class WorldState
         if (loc != null) clearedBattles.Add(loc.id);
     }
 
-    /// <summary>현재 위치에서 이동 가능한(공개된) 인접 장소들</summary>
+    /// <summary>현재 위치에서 이동 가능한(공개된) 인접 장소들 (깨진 참조는 제외)</summary>
     public List<LocationDefinition> GetReachable()
     {
-        return Current != null
-            ? new List<LocationDefinition>(Current.connections)
-            : new List<LocationDefinition>();
+        var list = new List<LocationDefinition>();
+        if (Current == null) return list;
+        foreach (var loc in Current.connections)
+            if (loc != null) list.Add(loc);
+        return list;
     }
 
     /// <summary>길은 인접 장소만 연결 (GDD 5) — 인접해야만 이동 가능</summary>

@@ -2,17 +2,25 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 개발용 부트스트랩 — 이제 게임 로직 초기화만 담당 (UI는 씬에서 제작, GameHUD가 연결).
-///   생성: 카메라 설정, GrabController, BattleController, RunManager + 개발용 데이터
-///   시작: 해금 영웅 중 앞의 3명으로 런 시작
+/// 게임(런) 씬 부트스트랩 — 게임 로직 초기화만 담당 (UI는 씬에서 제작, GameHUD가 연결).
+///   생성: 카메라, GrabController, UnitSeparation, BattleController, TravelController,
+///         RunManager, 월드 표현(지형/라벨/카메라)
+///   시작: 해금 영웅 중 앞의 3명으로 런 시작 (로비 출정 연동은 ④단계에서 교체 예정)
 ///
-/// 데이터(영웅/장비/설정)는 코드에서 생성하지만 전부 ScriptableObject라서
-/// 에디터 에셋(Create > Game > ...)으로 옮기고 인스펙터 필드로 교체하면 이 파일은 사라져도 됨.
+/// 데이터: 인스펙터에 에셋(Assets/GameData)을 연결하면 에셋 사용,
+///         비워두면 DevGameData/DevWorldData로 런타임 생성 (폴백).
+///         에셋 생성은 [Tools > GrabProto > 게임 데이터 에셋 생성].
 /// </summary>
 public class DevBootstrap : MonoBehaviour
 {
     [Header("씬 연결")]
     public GameHUD hud;
+
+    [Header("데이터 에셋 (권장) — 비워두면 개발용 데이터를 런타임 생성")]
+    public HeroDatabase heroDatabase;
+    public EquipmentDatabase equipmentDatabase;
+    public RunConfig runConfig;
+    public WorldDefinition worldDefinition;
 
     RunManager runManager;
     BattleController battleController;
@@ -26,15 +34,18 @@ public class DevBootstrap : MonoBehaviour
         battleController = new GameObject("BattleController").AddComponent<BattleController>();
 
         runManager = new GameObject("RunManager").AddComponent<RunManager>();
-        runManager.config = ScriptableObject.CreateInstance<RunConfig>(); // 기본값 사용
 
+        // 설정: 에셋이 있으면 런타임 사본 사용 (플레이 중 변경이 에셋 원본을 더럽히지 않도록)
+        RunConfig config = runConfig != null ? Instantiate(runConfig) : DevGameData.CreateRunConfig();
         // ★ 영입 시스템 보류 중 (방식 미확정) — 확정되면 이 두 줄을 지우고 재활성화
-        runManager.config.recruitChances = 0;
-        runManager.config.recruitAfterBattle = new int[0];
+        config.recruitChances = 0;
+        config.recruitAfterBattle = new int[0];
+        runManager.config = config;
 
-        runManager.heroDatabase = CreateDevHeroDatabase();
-        runManager.equipmentPool = CreateDevEquipmentPool();
-        runManager.world = DevWorldData.Create(); // 개발용 '바람 평원' 지역
+        runManager.heroDatabase = heroDatabase != null ? heroDatabase : DevGameData.CreateHeroDatabase();
+        EquipmentDatabase equips = equipmentDatabase != null ? equipmentDatabase : DevGameData.CreateEquipmentDatabase();
+        runManager.equipmentPool = new List<EquipmentDefinition>(equips.items);
+        runManager.world = worldDefinition != null ? worldDefinition : DevWorldData.Create();
         runManager.battleController = battleController;
         runManager.travelController = new GameObject("TravelController").AddComponent<TravelController>();
 
@@ -54,6 +65,18 @@ public class DevBootstrap : MonoBehaviour
     void Start()
     {
         runManager.Profile.EnsureDefaults(runManager.heroDatabase);
+
+        // 로비 출정으로 진입했으면 선택된 파티로, 아니면(게임 씬 직접 실행) 기본 3명으로
+        if (SortieData.HasSelection)
+        {
+            var starters = SortieData.Resolve(runManager.heroDatabase);
+            SortieData.Clear();
+            if (starters.Count > 0)
+            {
+                runManager.StartRun(starters);
+                return;
+            }
+        }
         runManager.StartDefaultRun();
     }
 
@@ -74,74 +97,4 @@ public class DevBootstrap : MonoBehaviour
         cam.clearFlags = CameraClearFlags.SolidColor;
         cam.backgroundColor = new Color(0.12f, 0.12f, 0.17f);
     }
-
-    // ================= 개발용 데이터 =================
-
-    HeroDatabase CreateDevHeroDatabase()
-    {
-        var db = ScriptableObject.CreateInstance<HeroDatabase>();
-        db.heroes.Add(MakeHero("knight", "기사", new Color(0.35f, 0.55f, 1f), 0.95f, true,
-            hp: 140f, atk: 12f, range: 1.1f, interval: 0.9f, speed: 1.8f));
-        db.heroes.Add(MakeHero("archer", "궁수", new Color(1f, 0.8f, 0.25f), 0.80f, true,
-            hp: 90f, atk: 16f, range: 3.5f, interval: 1.2f, speed: 2.0f,
-            projectile: true));
-        db.heroes.Add(MakeHero("healer", "사제", new Color(0.45f, 1f, 0.55f), 0.80f, true,
-            hp: 80f, atk: 6f, range: 2.5f, interval: 1.1f, speed: 1.7f,
-            healer: true, healPower: 14f, healRange: 3.2f));
-        db.heroes.Add(MakeHero("rogue", "도적", new Color(0.6f, 0.6f, 0.7f), 0.75f, false,
-            hp: 75f, atk: 20f, range: 1.0f, interval: 0.6f, speed: 2.4f));
-        db.heroes.Add(MakeHero("mage", "마법사", new Color(0.75f, 0.45f, 1f), 0.80f, false,
-            hp: 70f, atk: 26f, range: 4.2f, interval: 1.8f, speed: 1.6f,
-            projectile: true));
-        db.heroes.Add(MakeHero("paladin", "성기사", new Color(1f, 0.95f, 0.7f), 1.00f, false,
-            hp: 180f, atk: 10f, range: 1.2f, interval: 1.1f, speed: 1.5f));
-        return db;
-    }
-
-    HeroDefinition MakeHero(string id, string name, Color color, float size, bool unlockedByDefault,
-        float hp, float atk, float range, float interval, float speed,
-        bool healer = false, float healPower = 0f, float healRange = 0f,
-        bool projectile = false)
-    {
-        var d = ScriptableObject.CreateInstance<HeroDefinition>();
-        d.id = id;
-        d.displayName = name;
-        d.color = color;
-        d.size = size;
-        d.unlockedByDefault = unlockedByDefault;
-        d.maxHP = hp;
-        d.attack = atk;
-        d.attackRange = range;
-        d.attackInterval = interval;
-        d.moveSpeed = speed;
-        d.isHealer = healer;
-        d.healPower = healPower;
-        d.healRange = healRange;
-        d.usesProjectile = projectile;
-        return d;
-    }
-
-    List<EquipmentDefinition> CreateDevEquipmentPool()
-    {
-        return new List<EquipmentDefinition>
-        {
-            MakeEquip("sword",  "낡은 검",      Mod(StatType.Attack, flat: 5f)),
-            MakeEquip("armor",  "사슬 갑옷",    Mod(StatType.MaxHP, flat: 40f)),
-            MakeEquip("boots",  "바람의 신발",  Mod(StatType.MoveSpeed, pct: 20f)),
-            MakeEquip("lens",   "저격 렌즈",    Mod(StatType.AttackRange, flat: 0.6f)),
-            MakeEquip("ring",   "축복의 반지",  Mod(StatType.HealPower, flat: 8f)),
-        };
-    }
-
-    EquipmentDefinition MakeEquip(string id, string name, params StatModifier[] mods)
-    {
-        var e = ScriptableObject.CreateInstance<EquipmentDefinition>();
-        e.id = id;
-        e.displayName = name;
-        e.modifiers = mods;
-        return e;
-    }
-
-    static StatModifier Mod(StatType stat, float flat = 0f, float pct = 0f) =>
-        new StatModifier { stat = stat, flat = flat, percent = pct };
 }

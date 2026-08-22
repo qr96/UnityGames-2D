@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06fa9d538d7a3bc4c829e2dbef97ab65, type: 3}
+  m_Name: Loc_wp_forest
+  m_EditorClassIdentifier: Assembly-CSharp::LocationDefinition
+  id: wp_forest
+  displayName: "\uC232"
+  type: 0
+  worldPosition: {x: -8, y: 14}
+  connections:
+  - {fileID: 11400000, guid: e52444f9e9c61fc4db65a79598e16b43, type: 2}
+  - {fileID: 11400000, guid: f917912049bbff14da1ab3636222f0e2, type: 2}
+  - {fileID: 11400000, guid: 221d5e32dc9edf1469337d18a5d7682c, type: 2}
+  hasBattle: 1

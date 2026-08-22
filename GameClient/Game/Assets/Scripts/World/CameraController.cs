@@ -63,6 +63,7 @@ public class CameraController : MonoBehaviour
                 int n = 1;
                 foreach (var adj in rm.World.GetReachable())
                 {
+                    if (adj == null) continue;
                     sum += adj.worldPosition;
                     n++;
                 }

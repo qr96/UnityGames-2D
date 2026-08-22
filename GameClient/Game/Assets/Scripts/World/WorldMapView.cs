@@ -139,6 +139,7 @@ public class WorldMapView : MonoBehaviour
         float bestDist = tapRadius;
         foreach (var loc in rm.World.GetReachable())
         {
+            if (loc == null) continue;
             float d = Vector2.Distance(loc.worldPosition, world);
             if (d <= bestDist)
             {
@@ -166,10 +167,11 @@ public class WorldMapView : MonoBehaviour
         foreach (var loc in ws.world.AllLocations)
             if (ws.IsVisited(loc)) revealed.Add(loc);
         foreach (var adj in ws.GetReachable())
-            revealed.Add(adj);
+            if (adj != null) revealed.Add(adj);
 
         foreach (var loc in revealed)
         {
+            if (loc == null) continue;
             bool isCurrent = ws.Current == loc;
             bool reachable = ws.CanMoveTo(loc);
 

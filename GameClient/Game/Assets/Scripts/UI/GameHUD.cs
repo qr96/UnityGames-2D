@@ -17,6 +17,10 @@ public class GameHUD : MonoBehaviour
     [Header("공통")]
     public Text phaseLabel;
 
+    [Header("씬 전환")]
+    [Tooltip("런 종료(클리어/실패) 후 복귀할 로비 씬 이름")]
+    public string lobbySceneName = "Lobby";
+
     [Header("전투 준비 화면")]
     public GameObject startButton;
     public GameObject inventoryButton;
@@ -154,7 +158,15 @@ public class GameHUD : MonoBehaviour
 
     public void OnClickStartBattle() => RunManager.Instance.BeginCombat();
     public void OnClickConfirmLoot() => RunManager.Instance.ConfirmLoot();
-    public void OnClickNewRun() => RunManager.Instance.StartDefaultRun();
+    public void OnClickNewRun()
+    {
+        // 확정: 클리어/실패 모두 로비 복귀.
+        // 로비 씬을 로드할 수 없으면(빌드 목록 미등록 — 게임 씬 단독 개발 시) 즉시 재시작 폴백.
+        if (Application.CanStreamedLevelBeLoaded(lobbySceneName))
+            UnityEngine.SceneManagement.SceneManager.LoadScene(lobbySceneName);
+        else
+            RunManager.Instance.StartDefaultRun();
+    }
     public void OnClickOpenInventory() => OpenInventory();
     public void OnClickCloseInventory() => CloseInventory();
 
