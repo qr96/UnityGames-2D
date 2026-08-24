@@ -50,7 +50,10 @@ public class Hero : Unit
         Runtime = instance;
         HeroDefinition def = instance.definition;
 
-        SetMaxHP(instance.GetStat(StatType.MaxHP));
+        // HP 이월: 기록된 HP로 스폰 (음수 = 미기록 → 최대치). 장비로 최대치가 변해도 잃은 HP는 유지.
+        float maxHP = instance.GetStat(StatType.MaxHP);
+        float carried = instance.currentHP < 0f ? maxHP : instance.currentHP;
+        SetVitals(maxHP, Mathf.Min(carried, maxHP));
 
         // GDD 8: 기본 공격/스킬이 참조할 공통 스탯은 정의에서 개별 지정
         attackPower = instance.GetStat(def.basicAttackPowerStat);
@@ -75,6 +78,8 @@ public class Hero : Unit
     void Update()
     {
         if (IsDead || Runtime == null) return;
+
+        Runtime.currentHP = CurrentHP; // HP 이월: 런 상태에 상시 기록
 
         if (IsGrabbed)
         {

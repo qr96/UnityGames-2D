@@ -151,12 +151,20 @@ public class WorldEnvironment : MonoBehaviour
             deco.transform.localPosition = p;
         }
 
-        // 야영지는 중앙에 모닥불 표시
+        // 야영지 소품: 모닥불 + 텐트 + 짐 (야영지 기획 3·7 — 안전하고 조용한 장소)
         if (loc.type == LocationType.Camp)
         {
             var fire = UnitFactory.MakeVisual(root.transform, UnitFactory.Circle,
                 new Color(1f, 0.55f, 0.2f), 0.7f, sortingOrder: -9);
             fire.transform.localPosition = new Vector3(0f, 1.5f, 0f);
+
+            var tent = UnitFactory.MakeVisual(root.transform, UnitFactory.Square,
+                new Color(0.42f, 0.32f, 0.22f), 1.5f, sortingOrder: -9);
+            tent.transform.localPosition = new Vector3(-2.4f, 2.6f, 0f);
+
+            var bag = UnitFactory.MakeVisual(root.transform, UnitFactory.Circle,
+                new Color(0.35f, 0.28f, 0.20f), 0.6f, sortingOrder: -9);
+            bag.transform.localPosition = new Vector3(2.2f, 2.2f, 0f);
         }
 
         root.SetActive(false);
@@ -182,9 +190,9 @@ public class WorldEnvironment : MonoBehaviour
         float inset = 0.6f + (float)rng.NextDouble() * 0.7f;
         switch (side)
         {
-            case 0:  return new Vector2(t * arenaExtents.x, arenaExtents.y - inset);
-            case 1:  return new Vector2(t * arenaExtents.x, -arenaExtents.y + inset);
-            case 2:  return new Vector2(arenaExtents.x - inset, t * arenaExtents.y);
+            case 0: return new Vector2(t * arenaExtents.x, arenaExtents.y - inset);
+            case 1: return new Vector2(t * arenaExtents.x, -arenaExtents.y + inset);
+            case 2: return new Vector2(arenaExtents.x - inset, t * arenaExtents.y);
             default: return new Vector2(-arenaExtents.x + inset, t * arenaExtents.y);
         }
     }
@@ -209,7 +217,9 @@ public class WorldEnvironment : MonoBehaviour
         var max = Vector2.Max(pa, pb) + Vector2.one * 2f;
         roads.Add(new RoadEntry
         {
-            a = a, b = b, root = root,
+            a = a,
+            b = b,
+            root = root,
             rect = new Rect(min, max - min),
         });
     }
@@ -218,12 +228,12 @@ public class WorldEnvironment : MonoBehaviour
     {
         switch (type)
         {
-            case LocationType.Field:       return new Color(0.16f, 0.28f, 0.17f); // 숲/평원
+            case LocationType.Field: return new Color(0.16f, 0.28f, 0.17f); // 숲/평원
             case LocationType.Exploration: return new Color(0.22f, 0.20f, 0.18f); // 폐허/광산
-            case LocationType.Settlement:  return new Color(0.30f, 0.26f, 0.17f); // 마을
-            case LocationType.Camp:        return new Color(0.21f, 0.26f, 0.16f); // 야영지
-            case LocationType.Landmark:    return new Color(0.20f, 0.15f, 0.28f); // 랜드마크
-            default:                       return new Color(0.2f, 0.2f, 0.2f);
+            case LocationType.Settlement: return new Color(0.30f, 0.26f, 0.17f); // 마을
+            case LocationType.Camp: return new Color(0.21f, 0.26f, 0.16f); // 야영지
+            case LocationType.Landmark: return new Color(0.20f, 0.15f, 0.28f); // 랜드마크
+            default: return new Color(0.2f, 0.2f, 0.2f);
         }
     }
 
@@ -231,12 +241,12 @@ public class WorldEnvironment : MonoBehaviour
     {
         switch (type)
         {
-            case LocationType.Field:       return new Color(0.10f, 0.20f, 0.11f); // 나무
+            case LocationType.Field: return new Color(0.10f, 0.20f, 0.11f); // 나무
             case LocationType.Exploration: return new Color(0.35f, 0.33f, 0.30f); // 잔해/바위
-            case LocationType.Settlement:  return new Color(0.45f, 0.36f, 0.24f); // 집
-            case LocationType.Camp:        return new Color(0.12f, 0.18f, 0.11f);
-            case LocationType.Landmark:    return new Color(0.38f, 0.30f, 0.52f); // 석주
-            default:                       return Color.gray;
+            case LocationType.Settlement: return new Color(0.45f, 0.36f, 0.24f); // 집
+            case LocationType.Camp: return new Color(0.12f, 0.18f, 0.11f);
+            case LocationType.Landmark: return new Color(0.38f, 0.30f, 0.52f); // 석주
+            default: return Color.gray;
         }
     }
 }

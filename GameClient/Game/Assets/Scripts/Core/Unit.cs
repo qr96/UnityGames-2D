@@ -6,7 +6,7 @@ public enum Team { Hero, Enemy }
 
 /// <summary>
 /// 용사/적 공통 베이스. HP, 피격, 회복, 사망 처리를 담당.
-/// GDD: HP 0 → 해당 전투에서 사망(오브젝트 비활성화). 영구 사망 아님.
+/// 확정 규칙: HP는 전투 간 이월. HP 0 → 사망(비활성화), 사망은 교회에서 부활할 때까지 유지.
 /// </summary>
 public abstract class Unit : MonoBehaviour
 {
@@ -37,6 +37,13 @@ public abstract class Unit : MonoBehaviour
     {
         MaxHP = value;
         CurrentHP = value;
+    }
+
+    /// <summary>최대/현재 HP를 따로 설정 (전투 간 HP 이월용)</summary>
+    public void SetVitals(float max, float current)
+    {
+        MaxHP = max;
+        CurrentHP = Mathf.Clamp(current, 0f, max);
     }
 
     public virtual void TakeDamage(float amount)

@@ -27,6 +27,9 @@ public class GameHUD : MonoBehaviour
     public InventoryPanel inventoryPanel;      // 팝업 (닫힌 상태가 기본)
     public PartyEquipPanel partyEquipPanel;    // 인벤토리와 함께 열리고 닫힘
 
+    [Header("야영지 화면")]
+    public GameObject campPanel; // [휴식]/[떠나기] 버튼 묶음
+
     [Header("전투 중 화면")]
     public ConsumableBar consumableBar;
 
@@ -63,6 +66,7 @@ public class GameHUD : MonoBehaviour
         SetActive(startButton, phase == RunPhase.Placement);
         SetActive(inventoryButton, phase == RunPhase.Placement);
         SetActive(consumableBar != null ? consumableBar.gameObject : null, phase == RunPhase.Battle);
+        SetActive(campPanel, phase == RunPhase.Camp);
         SetActive(lootPanel, phase == RunPhase.Loot);
         SetActive(resultPanel, phase == RunPhase.RunClear || phase == RunPhase.RunFailed);
 
@@ -96,6 +100,10 @@ public class GameHUD : MonoBehaviour
             case RunPhase.Travel:
                 string dest = rm.TravelDestination != null ? rm.TravelDestination.displayName : "";
                 SetLabel($"이동 중 — {dest}(으)로 향하는 길");
+                break;
+
+            case RunPhase.Camp:
+                SetLabel($"{locName} — 모닥불 곁에서 잠시 쉬어갑니다");
                 break;
 
             case RunPhase.Placement:
@@ -169,6 +177,8 @@ public class GameHUD : MonoBehaviour
     }
     public void OnClickOpenInventory() => OpenInventory();
     public void OnClickCloseInventory() => CloseInventory();
+    public void OnClickRest() => RunManager.Instance.RestAtCamp();
+    public void OnClickLeaveCamp() => RunManager.Instance.LeaveCamp();
 
     // ---------- 텍스트 빌더 ----------
 

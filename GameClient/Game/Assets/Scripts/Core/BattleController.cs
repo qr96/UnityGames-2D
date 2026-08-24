@@ -79,12 +79,22 @@ public class BattleController : MonoBehaviour
 
     void SpawnParty(RunState run)
     {
-        Vector3[] slots = DefaultHeroSlots(run.party.Count);
-        for (int i = 0; i < run.party.Count; i++)
+        // 사망자는 스폰하지 않음 — 부활은 교회에서만 (확정 규칙)
+        var living = new List<HeroRunInstance>();
+        foreach (var inst in run.party)
+            if (!inst.isDead) living.Add(inst);
+
+        Vector3[] slots = DefaultHeroSlots(living.Count);
+        for (int i = 0; i < living.Count; i++)
         {
-            HeroRunInstance inst = run.party[i];
+            HeroRunInstance inst = living[i];
             Hero hero = UnitFactory.SpawnHero(inst, arenaCenter + slots[i]);
-            hero.OnDeath += _ => inst.diedThisRun = true; // 해금 조건 추적 (GDD 7)
+            hero.OnDeath += _ =>
+            {
+                inst.diedThisRun = true; // 해금 조건 추적 (GDD 7)
+                inst.isDead = true;      // 교회에서 부활할 때까지 사망 유지
+                inst.currentHP = 0f;
+            };
             spawned.Add(hero.gameObject);
         }
     }
@@ -94,6 +104,24 @@ public class BattleController : MonoBehaviour
         return location != null
             ? new Vector3(location.worldPosition.x, location.worldPosition.y, 0f)
             : Vector3.zero;
+    }
+
+    /// <summary>
+    /// 야영지 휴식 — 전장의 생존 파티를 완전 회복 + 짧은 회복 연출 (야영지 기획 4).
+    /// 사망자는 전장에 없으므로 자연히 제외 (부활은 교회 담당).
+    /// </summary>
+    public void HealPartyAtCamp()
+    {
+        foreach (Unit u in UnitRegistry.GetAll(Team.Hero))
+        {
+            u.Heal(u.MaxHP); // Heal이 최대치로 클램프 — 이미 최대면 효과 없음
+
+            var flash = new GameObject("CampHealFlash");
+            UnitFactory.MakeVisual(flash.transform, UnitFactory.Circle,
+                new Color(0.5f, 1f, 0.6f, 0.35f), 1.6f, sortingOrder: 4);
+            flash.transform.position = u.transform.position;
+            Destroy(flash, 0.5f);
+        }
     }
 
     // ---------- 교전 ----------

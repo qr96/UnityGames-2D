@@ -71,6 +71,7 @@ public class CameraController : MonoBehaviour
                 ComputePanBounds(rm);
                 break;
 
+            case RunPhase.Camp:
             case RunPhase.Placement:
             case RunPhase.Battle:
                 SetTarget(center, battleSize);

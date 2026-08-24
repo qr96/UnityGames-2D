@@ -189,7 +189,7 @@ public static class GameUIBuilder
         }
         if (canvas.transform.Find("PartyEquipPanel") != null)
         {
-            EditorUtility.DisplayDialog("영웅 장비 패널", "이미 PartyEquipPanel이 있습니다. 다시 만들려면 기존 것을 삭제한 뒤 실행하세요.", "확인");
+            EditorUtility.DisplayDialog("영웅 장비 패널", "이미 PartyEquipPanel이 있습니다.다시 만들려면 기존 것을 삭제한 뒤 실행하세요.", "확인");
             return;
         }
 
@@ -297,6 +297,72 @@ public static class GameUIBuilder
             crt.sizeDelta = new Vector2(70f, 70f);
             WireButton(closeBtn, hud, nameof(GameHUD.OnClickCloseInventory));
         }
+    }
+
+    static float uiScale = 1f; // 캔버스 기준 해상도 보정 (1080 폭 설계 기준)
+    static float S(float value) => value * uiScale;
+
+    static void UpdateUiScale(Canvas canvas)
+    {
+        var scaler = canvas != null ? canvas.GetComponent<CanvasScaler>() : null;
+        uiScale = (scaler != null && scaler.referenceResolution.x > 0f)
+            ? scaler.referenceResolution.x / 1080f
+            : 1f;
+    }
+
+    [MenuItem("Tools/GrabProto/야영지 UI 생성")]
+    public static void BuildCampUI()
+    {
+        font = LoadFont();
+
+        Canvas canvas = Object.FindFirstObjectByType<Canvas>();
+        GameHUD hud = canvas != null ? canvas.GetComponent<GameHUD>() : null;
+        if (canvas == null || hud == null)
+        {
+            EditorUtility.DisplayDialog("야영지 UI", "Canvas/GameHUD가 없습니다. 먼저 [게임 UI 생성]을 실행하세요.", "확인");
+            return;
+        }
+        if (canvas.transform.Find("CampPanel") != null)
+        {
+            EditorUtility.DisplayDialog("야영지 UI", "이미 CampPanel이 있습니다.", "확인");
+            return;
+        }
+
+        BuildCampUIInternal(canvas, hud);
+        EditorUtility.SetDirty(hud);
+        EditorSceneManager.MarkSceneDirty(canvas.gameObject.scene);
+        Debug.Log("[GameUIBuilder] 야영지 UI 생성 완료.");
+    }
+
+    /// <summary>야영지 [휴식]/[떠나기] 버튼 생성 및 연결 — 캔버스 기준 해상도에 맞게 크기 보정</summary>
+    static void BuildCampUIInternal(Canvas canvas, GameHUD hud)
+    {
+        UpdateUiScale(canvas);
+
+        var panelGO = new GameObject("CampPanel", typeof(RectTransform));
+        panelGO.transform.SetParent(canvas.transform, false);
+        var prt = panelGO.GetComponent<RectTransform>();
+        prt.anchorMin = prt.anchorMax = new Vector2(0.5f, 0f);
+        prt.anchoredPosition = new Vector2(0f, S(200f));
+        prt.sizeDelta = new Vector2(S(900f), S(140f));
+
+        Button rest = MakeButton(panelGO.transform, "RestButton", "휴식", new Color(0.22f, 0.62f, 0.40f), 36);
+        var rrt = rest.GetComponent<RectTransform>();
+        rrt.anchorMin = rrt.anchorMax = new Vector2(0.5f, 0.5f);
+        rrt.anchoredPosition = new Vector2(-S(200f), 0f);
+        rrt.sizeDelta = new Vector2(S(340f), S(120f));
+        WireButton(rest, hud, nameof(GameHUD.OnClickRest));
+
+        Button leave = MakeButton(panelGO.transform, "LeaveButton", "떠나기", new Color(0.30f, 0.33f, 0.42f), 36);
+        var lrt = leave.GetComponent<RectTransform>();
+        lrt.anchorMin = lrt.anchorMax = new Vector2(0.5f, 0.5f);
+        lrt.anchoredPosition = new Vector2(S(200f), 0f);
+        lrt.sizeDelta = new Vector2(S(340f), S(120f));
+        WireButton(leave, hud, nameof(GameHUD.OnClickLeaveCamp));
+
+        hud.campPanel = panelGO;
+        panelGO.SetActive(false);
+        EditorUtility.SetDirty(hud);
     }
 
     // ================= 생성 헬퍼 =================

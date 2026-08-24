@@ -7,6 +7,7 @@ public enum RunPhase
     None,
     Explore,    // 탐험: 지도에서 다음 장소 선택 (GDD 월드)
     Travel,     // 이동 연출: 영웅들이 길을 따라 목적지로 걸어감 (GDD 11)
+    Camp,       // 야영지: 파티 표시 + [휴식]/[떠나기] (야영지 기획 v0.1)
     Placement,  // 전투 준비: 영웅 자유 배치 + 장비 드래그 장착 + '전투 시작' 버튼
     Battle,     // 교전 중
     Loot,       // 전투 승리 → 획득 아이템 팝업
@@ -113,6 +114,14 @@ public class RunManager : MonoBehaviour
     {
         LocationDefinition loc = World.Current;
 
+        // 야영지: 휴식 화면 (진입 → 파티 표시 → 휴식/떠나기 — 야영지 기획 3)
+        if (loc.type == LocationType.Camp)
+        {
+            battleController.ShowPartyAt(Run, loc);
+            SetPhase(RunPhase.Camp);
+            return;
+        }
+
         bool battle = loc.hasBattle &&
                       (config.refightClearedLocations || !World.IsBattleCleared(loc));
 
@@ -125,6 +134,22 @@ public class RunManager : MonoBehaviour
             // 야영지/마을/클리어된 장소 — 장소 콘텐츠(회복, 상점 등)는 스텁 상태
             EnterExplore();
         }
+    }
+
+    // ---------- 야영지 ----------
+
+    /// <summary>[휴식] — 생존 영웅 HP 완전 회복. 사망자 제외 (부활은 교회 담당). 무료·무제한.</summary>
+    public void RestAtCamp()
+    {
+        if (Phase != RunPhase.Camp) return;
+        battleController.HealPartyAtCamp();
+    }
+
+    /// <summary>[떠나기] — 탐험 복귀. 휴식하지 않고 바로 떠나는 것도 가능 (야영지 기획 5).</summary>
+    public void LeaveCamp()
+    {
+        if (Phase != RunPhase.Camp) return;
+        EnterExplore();
     }
 
     // ---------- 전투 준비 → 교전 ----------
