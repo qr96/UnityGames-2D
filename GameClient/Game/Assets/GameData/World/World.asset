@@ -14,4 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WorldDefinition
   regions:
   - {fileID: 11400000, guid: 0346a119b9161d348a5d9208d1792a77, type: 2}
-  defaultStartLocation: {fileID: 11400000, guid: e52444f9e9c61fc4db65a79598e16b43, type: 2}
+  defaultStartLocation: {fileID: 11400000, guid: 08d0d44a51403794395a72b798f63771, type: 2}

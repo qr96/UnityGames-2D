@@ -189,7 +189,7 @@ public static class GameUIBuilder
         }
         if (canvas.transform.Find("PartyEquipPanel") != null)
         {
-            EditorUtility.DisplayDialog("영웅 장비 패널", "이미 PartyEquipPanel이 있습니다.다시 만들려면 기존 것을 삭제한 뒤 실행하세요.", "확인");
+            EditorUtility.DisplayDialog("영웅 장비 패널", "이미 PartyEquipPanel이 있습니다. 다시 만들려면 기존 것을 삭제한 뒤 실행하세요.", "확인");
             return;
         }
 
@@ -308,6 +308,151 @@ public static class GameUIBuilder
         uiScale = (scaler != null && scaler.referenceResolution.x > 0f)
             ? scaler.referenceResolution.x / 1080f
             : 1f;
+    }
+
+    [MenuItem("Tools/GrabProto/탐험 UI 생성 (방향 선택 + 지도)")]
+    public static void BuildExploreUI()
+    {
+        font = LoadFont();
+
+        Canvas canvas = Object.FindFirstObjectByType<Canvas>();
+        GameHUD hud = canvas != null ? canvas.GetComponent<GameHUD>() : null;
+        if (canvas == null || hud == null)
+        {
+            EditorUtility.DisplayDialog("탐험 UI", "Canvas/GameHUD가 없습니다. 먼저 [게임 UI 생성]을 실행하세요.", "확인");
+            return;
+        }
+        if (canvas.transform.Find("ExploreDirectionPanel") != null)
+        {
+            EditorUtility.DisplayDialog("탐험 UI", "이미 ExploreDirectionPanel이 있습니다.", "확인");
+            return;
+        }
+
+        UpdateUiScale(canvas);
+
+        // ---- 방향 선택 패널 (상/하/좌/우 4슬롯) ----
+        var panelGO = new GameObject("ExploreDirectionPanel", typeof(RectTransform));
+        panelGO.transform.SetParent(canvas.transform, false);
+        var prt = panelGO.GetComponent<RectTransform>();
+        prt.anchorMin = Vector2.zero;
+        prt.anchorMax = Vector2.one;
+        prt.offsetMin = prt.offsetMax = Vector2.zero;
+
+        var panel = panelGO.AddComponent<ExploreDirectionPanel>();
+        panel.slots = new[]
+        {
+            MakeDirectionSlot(panelGO.transform, Direction.North, new Vector2(0.5f, 1f), new Vector2(0f, -S(220f)), new Vector2(S(560f), S(150f))),
+            MakeDirectionSlot(panelGO.transform, Direction.South, new Vector2(0.5f, 0f), new Vector2(0f, S(220f)),  new Vector2(S(560f), S(150f))),
+            MakeDirectionSlot(panelGO.transform, Direction.West,  new Vector2(0f, 0.5f), new Vector2(S(200f), 0f),  new Vector2(S(380f), S(170f))),
+            MakeDirectionSlot(panelGO.transform, Direction.East,  new Vector2(1f, 0.5f), new Vector2(-S(200f), 0f), new Vector2(S(380f), S(170f))),
+        };
+        panelGO.SetActive(false);
+
+        // ---- 지도 버튼 (우상단) ----
+        Button mapBtn = MakeButton(canvas.transform, "MapButton", "지도", new Color(0.25f, 0.27f, 0.33f), 30);
+        var mrt = mapBtn.GetComponent<RectTransform>();
+        mrt.anchorMin = mrt.anchorMax = new Vector2(1f, 1f);
+        mrt.pivot = new Vector2(1f, 1f);
+        mrt.anchoredPosition = new Vector2(-S(30f), -S(30f));
+        mrt.sizeDelta = new Vector2(S(160f), S(90f));
+        WireButton(mapBtn, hud, nameof(GameHUD.OnClickOpenMap));
+        mapBtn.gameObject.SetActive(false);
+
+        // ---- 지도 팝업 ----
+        var mapGO = MakeImage(canvas.transform, "MapPanel", new Color(0.06f, 0.07f, 0.10f, 0.97f), rounded: true);
+        var maprt = mapGO.GetComponent<RectTransform>();
+        maprt.anchorMin = maprt.anchorMax = new Vector2(0.5f, 0.5f);
+        maprt.sizeDelta = new Vector2(S(940f), S(1400f));
+
+        var mapPanel = mapGO.AddComponent<MapPanel>();
+
+        Text mapTitle = MakeText(mapGO.transform, "Title", "지도 — 지나온 길", 40);
+        var mtrt = mapTitle.rectTransform;
+        mtrt.anchorMin = mtrt.anchorMax = new Vector2(0.5f, 1f);
+        mtrt.anchoredPosition = new Vector2(0f, -S(64f));
+        mtrt.sizeDelta = new Vector2(S(700f), S(80f));
+
+        Button mapClose = MakeButton(mapGO.transform, "CloseButton", "✕", new Color(0.55f, 0.22f, 0.25f), 34);
+        var mcrt = mapClose.GetComponent<RectTransform>();
+        mcrt.anchorMin = mcrt.anchorMax = new Vector2(1f, 1f);
+        mcrt.pivot = new Vector2(1f, 1f);
+        mcrt.anchoredPosition = new Vector2(-S(16f), -S(16f));
+        mcrt.sizeDelta = new Vector2(S(76f), S(76f));
+        WireButton(mapClose, hud, nameof(GameHUD.OnClickCloseMap));
+
+        var contentGO = new GameObject("Content", typeof(RectTransform));
+        contentGO.transform.SetParent(mapGO.transform, false);
+        var content = contentGO.GetComponent<RectTransform>();
+        content.anchorMin = content.anchorMax = new Vector2(0.5f, 0.5f);
+        content.anchoredPosition = new Vector2(0f, -S(40f));
+        content.sizeDelta = new Vector2(S(840f), S(1150f));
+
+        // 점 템플릿 (Image + 이름 라벨)
+        var dotGO = MakeImage(content, "DotTemplate", Color.white, rounded: true);
+        dotGO.GetComponent<RectTransform>().sizeDelta = new Vector2(S(52f), S(52f));
+        Text dotLabel = MakeText(dotGO.transform, "Label", "이름", 24);
+        var dlrt = dotLabel.rectTransform;
+        dlrt.anchorMin = dlrt.anchorMax = new Vector2(0.5f, 0f);
+        dlrt.pivot = new Vector2(0.5f, 1f);
+        dlrt.anchoredPosition = new Vector2(0f, -S(6f));
+        dlrt.sizeDelta = new Vector2(S(240f), S(50f));
+        dotGO.SetActive(false);
+
+        mapPanel.content = content;
+        mapPanel.dotTemplate = dotGO;
+        mapGO.SetActive(false);
+
+        // ---- 연결 ----
+        hud.exploreDirectionPanel = panel;
+        hud.mapButton = mapBtn.gameObject;
+        hud.mapPanel = mapPanel;
+
+        EditorUtility.SetDirty(hud);
+        EditorUtility.SetDirty(panel);
+        EditorUtility.SetDirty(mapPanel);
+        EditorSceneManager.MarkSceneDirty(canvas.gameObject.scene);
+        Debug.Log("[GameUIBuilder] 탐험 UI(방향 선택 + 지도) 생성 완료.");
+    }
+
+    /// <summary>방향 슬롯 1개: 버튼 배경 + 이름 텍스트 + 미리보기 텍스트</summary>
+    static ExploreDirectionPanel.DirectionSlot MakeDirectionSlot(
+        Transform parent, Direction dir, Vector2 anchor, Vector2 pos, Vector2 size)
+    {
+        Button btn = MakeButton(parent, $"Dir_{dir}", "", new Color(0.10f, 0.13f, 0.20f, 0.92f), 30);
+        var rt = btn.GetComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = anchor;
+        rt.anchoredPosition = pos;
+        rt.sizeDelta = size;
+
+        // MakeButton이 만든 중앙 텍스트는 사용하지 않음 (이름/미리보기 2줄 구성)
+        Text builtIn = btn.GetComponentInChildren<Text>();
+        if (builtIn != null) Object.DestroyImmediate(builtIn.gameObject);
+
+        Text nameText = MakeText(btn.transform, "NameText", "이름", 32);
+        var nrt = nameText.rectTransform;
+        nrt.anchorMin = new Vector2(0f, 0.5f);
+        nrt.anchorMax = new Vector2(1f, 1f);
+        nrt.offsetMin = new Vector2(S(16f), 0f);
+        nrt.offsetMax = new Vector2(-S(16f), -S(8f));
+        nameText.alignment = TextAnchor.MiddleCenter;
+
+        Text preview = MakeText(btn.transform, "PreviewText", "미리보기", 24);
+        preview.fontStyle = FontStyle.Normal;
+        preview.color = new Color(0.8f, 0.8f, 0.85f);
+        var pvrt = preview.rectTransform;
+        pvrt.anchorMin = new Vector2(0f, 0f);
+        pvrt.anchorMax = new Vector2(1f, 0.5f);
+        pvrt.offsetMin = new Vector2(S(16f), S(8f));
+        pvrt.offsetMax = new Vector2(-S(16f), 0f);
+        preview.alignment = TextAnchor.MiddleCenter;
+
+        return new ExploreDirectionPanel.DirectionSlot
+        {
+            direction = dir,
+            root = btn.gameObject,
+            nameText = nameText,
+            previewText = preview,
+        };
     }
 
     [MenuItem("Tools/GrabProto/야영지 UI 생성")]

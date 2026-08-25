@@ -10,13 +10,20 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 06fa9d538d7a3bc4c829e2dbef97ab65, type: 3}
-  m_Name: Loc_wp_mountain
+  m_Name: Loc_wp10_windmill
   m_EditorClassIdentifier: Assembly-CSharp::LocationDefinition
-  id: wp_mountain
-  displayName: "\uC0B0\uAE38"
+  id: wp10_windmill
+  displayName: "\uD48D\uCC28 \uC5B8\uB355"
   type: 0
-  worldPosition: {x: 11, y: 30}
-  connections:
-  - {fileID: 11400000, guid: f917912049bbff14da1ab3636222f0e2, type: 2}
-  - {fileID: 11400000, guid: 60d6b2574af29cf478381710b582f009, type: 2}
+  worldPosition: {x: 0, y: 84}
+  north: {fileID: 11400000, guid: 46002c17d78c81e408ecf197b9b65b21, type: 2}
+  south: {fileID: 0}
+  west: {fileID: 0}
+  east: {fileID: 0}
+  previewText: "\uD48D\uCC28 \uB0A0\uAC1C\uAC00 \uC090\uAC71\uAC70\uB9B0\uB2E4"
   hasBattle: 1
+  canMerchant: 0
+  canEvent: 1
+  hasDedicatedEvent: 1
+  canDiscovery: 1
+  fixedFunction: 0

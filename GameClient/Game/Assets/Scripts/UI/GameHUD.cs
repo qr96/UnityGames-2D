@@ -21,6 +21,11 @@ public class GameHUD : MonoBehaviour
     [Tooltip("런 종료(클리어/실패) 후 복귀할 로비 씬 이름")]
     public string lobbySceneName = "Lobby";
 
+    [Header("탐험 화면")]
+    public ExploreDirectionPanel exploreDirectionPanel; // 상하좌우 방향 선택
+    public GameObject mapButton;                        // 지도 열기 버튼
+    public MapPanel mapPanel;                           // 지도 팝업
+
     [Header("전투 준비 화면")]
     public GameObject startButton;
     public GameObject inventoryButton;
@@ -66,6 +71,9 @@ public class GameHUD : MonoBehaviour
         SetActive(startButton, phase == RunPhase.Placement);
         SetActive(inventoryButton, phase == RunPhase.Placement);
         SetActive(consumableBar != null ? consumableBar.gameObject : null, phase == RunPhase.Battle);
+        SetActive(exploreDirectionPanel != null ? exploreDirectionPanel.gameObject : null, phase == RunPhase.Explore);
+        SetActive(mapButton, phase == RunPhase.Explore);
+        if (phase != RunPhase.Explore && mapPanel != null) mapPanel.Close();
         SetActive(campPanel, phase == RunPhase.Camp);
         SetActive(lootPanel, phase == RunPhase.Loot);
         SetActive(resultPanel, phase == RunPhase.RunClear || phase == RunPhase.RunFailed);
@@ -94,7 +102,8 @@ public class GameHUD : MonoBehaviour
                     var region = rm.World.world.GetRegionOf(loc);
                     if (region != null) regionName = region.regionName + " · ";
                 }
-                SetLabel($"{regionName}이동할 장소를 선택하세요");
+                SetLabel($"{regionName}어디로 갈까요?");
+                if (exploreDirectionPanel != null) exploreDirectionPanel.Refresh();
                 break;
 
             case RunPhase.Travel:
@@ -179,6 +188,8 @@ public class GameHUD : MonoBehaviour
     public void OnClickCloseInventory() => CloseInventory();
     public void OnClickRest() => RunManager.Instance.RestAtCamp();
     public void OnClickLeaveCamp() => RunManager.Instance.LeaveCamp();
+    public void OnClickOpenMap() { if (mapPanel != null) mapPanel.Open(); }
+    public void OnClickCloseMap() { if (mapPanel != null) mapPanel.Close(); }
 
     // ---------- 텍스트 빌더 ----------
 

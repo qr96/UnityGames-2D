@@ -10,14 +10,20 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 06fa9d538d7a3bc4c829e2dbef97ab65, type: 3}
-  m_Name: Loc_wp_forest
+  m_Name: Loc_wp12_hill
   m_EditorClassIdentifier: Assembly-CSharp::LocationDefinition
-  id: wp_forest
-  displayName: "\uC232"
+  id: wp12_hill
+  displayName: "\uB0AE\uC740 \uC5B8\uB355"
   type: 0
-  worldPosition: {x: -8, y: 14}
-  connections:
-  - {fileID: 11400000, guid: e52444f9e9c61fc4db65a79598e16b43, type: 2}
-  - {fileID: 11400000, guid: f917912049bbff14da1ab3636222f0e2, type: 2}
-  - {fileID: 11400000, guid: 221d5e32dc9edf1469337d18a5d7682c, type: 2}
+  worldPosition: {x: 0, y: 98}
+  north: {fileID: 0}
+  south: {fileID: 0}
+  west: {fileID: 0}
+  east: {fileID: 11400000, guid: 7cfd036989c39984dbcf661890cbf455, type: 2}
+  previewText: "\uC5B8\uB355 \uB108\uBA38\uAC00 \uBCF4\uC774\uC9C0 \uC54A\uB294\uB2E4"
   hasBattle: 1
+  canMerchant: 0
+  canEvent: 1
+  hasDedicatedEvent: 0
+  canDiscovery: 1
+  fixedFunction: 0

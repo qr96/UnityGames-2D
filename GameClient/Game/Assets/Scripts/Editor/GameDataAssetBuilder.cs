@@ -43,7 +43,7 @@ public static class GameDataAssetBuilder
         AssetDatabase.CreateAsset(config, $"{Root}/RunConfig.asset");
 
         // ---- 월드 ----
-        // 장소들은 서로를 참조(connections)하므로, ①모든 장소를 먼저 에셋으로 만들고
+        // 장소들은 서로를 참조(방향 출구)하므로, ①모든 장소를 먼저 에셋으로 만들고
         // ②전부 에셋이 된 뒤 다시 Dirty 처리해 참조를 재직렬화해야 연결이 끊기지 않음.
         WorldDefinition world = DevWorldData.Create();
         foreach (var region in world.regions)

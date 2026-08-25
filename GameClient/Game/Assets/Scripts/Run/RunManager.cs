@@ -28,7 +28,7 @@ public enum RunPhase
 ///   → 랜드마크 전투 승리 = RunClear (확정: 랜드마크 클리어 = 런 클리어)
 ///   → 전멸 시 RunFailed (RunState 폐기 = 장비/파티 소멸)
 ///
-/// 임시 결정(미확정 항목): 클리어한 장소는 재전투 없음 (config.refightClearedLocations로 변경 가능)
+/// 일방통행 규칙: 방문한 장소로는 돌아갈 수 없음 — 도착지는 항상 첫 방문
 /// </summary>
 public class RunManager : MonoBehaviour
 {
@@ -90,15 +90,16 @@ public class RunManager : MonoBehaviour
         SetPhase(RunPhase.Explore);
     }
 
-    /// <summary>지도에서 인접 장소를 탭하면 호출 (WorldMapView)</summary>
-    public void TravelTo(LocationDefinition destination)
+    /// <summary>방향 선택 UI가 호출 — 해당 방향의 미방문 출구로 이동 (일방통행)</summary>
+    public void TravelInDirection(Direction dir)
     {
         if (Phase != RunPhase.Explore) return;
-        if (World == null || !World.CanMoveTo(destination)) return; // 인접해야만 이동 (GDD 5)
+        LocationDefinition destination = World != null ? World.GetAvailableExit(dir) : null;
+        if (destination == null) return;
 
         TravelDestination = destination;
         SetPhase(RunPhase.Travel);
-        travelController.BeginTravel(Run, World.Current, destination, World.IsVisited(destination));
+        travelController.BeginTravel(Run, World.Current, destination, destinationVisited: false);
     }
 
     /// <summary>이동 연출 완료 시 TravelController가 호출</summary>
@@ -114,18 +115,16 @@ public class RunManager : MonoBehaviour
     {
         LocationDefinition loc = World.Current;
 
-        // 야영지: 휴식 화면 (진입 → 파티 표시 → 휴식/떠나기 — 야영지 기획 3)
-        if (loc.type == LocationType.Camp)
+        // 휴식 기능 장소 (예배당/야영지): 휴식 화면 (진입 → 파티 표시 → 휴식/떠나기)
+        if (loc.fixedFunction == LocationFunction.Rest)
         {
             battleController.ShowPartyAt(Run, loc);
             SetPhase(RunPhase.Camp);
             return;
         }
 
-        bool battle = loc.hasBattle &&
-                      (config.refightClearedLocations || !World.IsBattleCleared(loc));
-
-        if (battle)
+        // 일방통행: 도착지는 항상 첫 방문 — 전투 장소면 그대로 전투
+        if (loc.hasBattle)
         {
             EnterPlacement();
         }

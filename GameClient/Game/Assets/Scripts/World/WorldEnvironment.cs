@@ -6,7 +6,9 @@ using UnityEngine;
 /// GDD 9·10: 별도 지도 화면이 아니라 실제 세계를 카메라 줌으로 봄.
 ///           게임적으로는 Arena지만 시각적으로는 실제 Location처럼 보이게.
 ///
-/// - 공개 규칙: 방문한 장소 + 현재 인접 장소만 지형이 드러남 (GDD 6)
+/// - 표시 규칙(개편): 화면에는 항상 '한 맵만' 존재 — 현재 장소의 지형/길만 보임.
+///   이동 연출 중에는 출발 맵 → (암전 중 ShowOnly로 교체) → 도착 맵.
+///   지나온 곳의 기록은 지도 팝업(MapPanel)이 담당.
 /// - 최적화: 카메라 시야(+여유)에 들어오는 지형/길만 활성화 (컬링)
 /// - 지형은 결정적(장소 id 시드)으로 배치 → 세계는 고정 (GDD 7)
 /// - 자리표시자 비주얼: 타입별 바닥 + 가장자리 장식(경계 숨김 암시 — 숲=나무, 폐허=잔해...).
@@ -25,7 +27,6 @@ public class WorldEnvironment : MonoBehaviour
         public LocationDefinition loc;
         public GameObject root;
         public Rect rect;
-        public bool revealed;
     }
 
     class RoadEntry
@@ -33,7 +34,6 @@ public class WorldEnvironment : MonoBehaviour
         public LocationDefinition a, b;
         public GameObject root;
         public Rect rect;
-        public bool revealed;
     }
 
     readonly List<EnvEntry> envs = new List<EnvEntry>();
@@ -41,6 +41,7 @@ public class WorldEnvironment : MonoBehaviour
 
     Camera cam;
     bool built;
+    LocationDefinition visibleLocation; // 화면에 표시되는 유일한 맵
 
     void Start()
     {
@@ -59,27 +60,21 @@ public class WorldEnvironment : MonoBehaviour
 
     void OnPhase(RunPhase _)
     {
-        RefreshRevealed(); // 이동/도착마다 공개 상태 갱신
-    }
-
-    void RefreshRevealed()
-    {
         RunManager rm = RunManager.Instance;
         WorldState ws = rm != null ? rm.World : null;
         if (ws == null) return;
 
         if (!built) Build(ws.world);
 
-        var revealed = new HashSet<LocationDefinition>();
-        foreach (var loc in ws.world.AllLocations)
-            if (ws.IsVisited(loc)) revealed.Add(loc);
-        foreach (var adj in ws.GetReachable())
-            revealed.Add(adj);
+        // 페이즈 전환 시 = 현재 장소만 표시
+        // (이동 연출 중 출발 맵 → 도착 맵 교체는 TravelController가 암전 중 ShowOnly로 처리)
+        visibleLocation = ws.Current;
+    }
 
-        foreach (var e in envs)
-            e.revealed = revealed.Contains(e.loc);
-        foreach (var r in roads)
-            r.revealed = revealed.Contains(r.a) && revealed.Contains(r.b);
+    /// <summary>표시할 맵을 지정 (이동 연출의 암전 중 TravelController가 호출)</summary>
+    public void ShowOnly(LocationDefinition loc)
+    {
+        visibleLocation = loc;
     }
 
     // ---------- 카메라 컬링 ----------
@@ -96,9 +91,11 @@ public class WorldEnvironment : MonoBehaviour
         var view = new Rect(c.x - halfW, c.y - halfH, halfW * 2f, halfH * 2f);
 
         foreach (var e in envs)
-            SetActive(e.root, e.revealed && view.Overlaps(e.rect));
+            SetActive(e.root, e.loc == visibleLocation && view.Overlaps(e.rect));
+
+        // 길: 현재 맵에 붙은 것만 (걸어 나가고 들어오는 길이 보이도록)
         foreach (var r in roads)
-            SetActive(r.root, r.revealed && view.Overlaps(r.rect));
+            SetActive(r.root, (r.a == visibleLocation || r.b == visibleLocation) && view.Overlaps(r.rect));
     }
 
     static void SetActive(GameObject go, bool value)
@@ -118,7 +115,7 @@ public class WorldEnvironment : MonoBehaviour
         var drawn = new HashSet<string>();
         foreach (var a in world.AllLocations)
         {
-            foreach (var b in a.connections)
+            foreach (var (_, b) in a.Exits)
             {
                 if (b == null) continue;
                 string key = string.CompareOrdinal(a.id, b.id) < 0 ? a.id + "|" + b.id : b.id + "|" + a.id;

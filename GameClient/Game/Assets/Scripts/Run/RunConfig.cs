@@ -9,9 +9,7 @@ public class RunConfig : ScriptableObject
     public int[] recruitAfterBattle = { 1, 2 }; // 몇 번째 전투 '승리 후' 영입 이벤트 발생
     public int candidatesPerRecruit = 2;
 
-    [Header("월드 (프로토 임시 규칙)")]
-    [Tooltip("클리어한 장소 재방문 시 전투 재발생 여부 — GDD 미확정 항목, 임시로 꺼둠")]
-    public bool refightClearedLocations = false;
+    [Header("월드")]
     [Tooltip("랜드마크(보스 지역) 적 스탯 배수")]
     public float landmarkStatMultiplier = 1.6f;
 

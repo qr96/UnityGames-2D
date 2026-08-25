@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06fa9d538d7a3bc4c829e2dbef97ab65, type: 3}
+  m_Name: Loc_wp11_bridge
+  m_EditorClassIdentifier: Assembly-CSharp::LocationDefinition
+  id: wp11_bridge
+  displayName: "\uC791\uC740 \uB3CC\uB2E4\uB9AC"
+  type: 0
+  worldPosition: {x: 32, y: 84}
+  north: {fileID: 11400000, guid: b832dfad57012244ba0a8de3c64422cc, type: 2}
+  south: {fileID: 0}
+  west: {fileID: 11400000, guid: 46002c17d78c81e408ecf197b9b65b21, type: 2}
+  east: {fileID: 0}
+  previewText: "\uB2E4\uB9AC \uBC11\uC774 \uC218\uC0C1\uD558\uB2E4"
+  hasBattle: 1
+  canMerchant: 0
+  canEvent: 1
+  hasDedicatedEvent: 0
+  canDiscovery: 1
+  fixedFunction: 0

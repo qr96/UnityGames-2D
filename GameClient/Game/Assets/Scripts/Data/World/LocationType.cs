@@ -11,3 +11,15 @@ public enum LocationType
     Exploration,  // 탐험 장소: 폐허, 광산, 동굴 (전투/보상/사건)
     Landmark,     // 주요 랜드마크 / 보스 지역
 }
+
+/// <summary>
+/// 장소의 고정 기능 — 콘텐츠 표의 '고정 기능' 열. 랜덤 콘텐츠와 달리 항상 제공됨.
+/// 동작 판정은 이 값 기준 (LocationType은 지형/분류 표현용).
+/// </summary>
+public enum LocationFunction
+{
+    None,
+    RunStart, // 런 시작 지점 (정보용 — 실제 시작은 WorldDefinition.defaultStartLocation)
+    Rest,     // 휴식: 생존자 완전 회복 (예배당/야영지)
+    Shop,     // 상점 (시스템 추후)
+}

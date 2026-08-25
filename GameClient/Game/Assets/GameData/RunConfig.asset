@@ -15,7 +15,6 @@ MonoBehaviour:
   recruitChances: 2
   recruitAfterBattle: 0100000002000000
   candidatesPerRecruit: 2
-  refightClearedLocations: 0
   landmarkStatMultiplier: 1.6
   potionsPerBattle: 3
   equipmentDropsPerBattle: 2

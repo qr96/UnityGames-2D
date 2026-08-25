@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06fa9d538d7a3bc4c829e2dbef97ab65, type: 3}
+  m_Name: Loc_wp06_hamlet
+  m_EditorClassIdentifier: Assembly-CSharp::LocationDefinition
+  id: wp06_hamlet
+  displayName: "\uC791\uC740 \uCD0C\uB77D"
+  type: 1
+  worldPosition: {x: -16, y: 56}
+  north: {fileID: 11400000, guid: 303d79a626e5b0f40ac07fa47742a087, type: 2}
+  south: {fileID: 0}
+  west: {fileID: 0}
+  east: {fileID: 11400000, guid: 1a40375ab364ebb419dde4d082a1f09d, type: 2}
+  previewText: "\uC778\uC801\uC740 \uB4DC\uBB3C\uC9C0\uB9CC \uC548\uC804\uD574 \uBCF4\uC778\uB2E4"
+  hasBattle: 0
+  canMerchant: 0
+  canEvent: 1
+  hasDedicatedEvent: 1
+  canDiscovery: 0
+  fixedFunction: 3

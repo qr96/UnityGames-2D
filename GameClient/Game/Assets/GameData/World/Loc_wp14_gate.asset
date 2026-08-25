@@ -10,12 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 06fa9d538d7a3bc4c829e2dbef97ab65, type: 3}
-  m_Name: Loc_wp_tomb
+  m_Name: Loc_wp14_gate
   m_EditorClassIdentifier: Assembly-CSharp::LocationDefinition
-  id: wp_tomb
-  displayName: "\uAC70\uC778\uC758 \uBB34\uB364"
+  id: wp14_gate
+  displayName: "\uC232 \uC785\uAD6C"
   type: 4
-  worldPosition: {x: 0, y: 64}
-  connections:
-  - {fileID: 11400000, guid: 60d6b2574af29cf478381710b582f009, type: 2}
+  worldPosition: {x: 16, y: 112}
+  north: {fileID: 0}
+  south: {fileID: 0}
+  west: {fileID: 0}
+  east: {fileID: 0}
+  previewText: "\uC5B4\uB450\uC6B4 \uC232 \u2014 \uAC70\uB300\uD55C \uAE30\uC6B4\uC774
+    \uC0C8\uC5B4 \uB098\uC628\uB2E4"
   hasBattle: 1
+  canMerchant: 0
+  canEvent: 1
+  hasDedicatedEvent: 0
+  canDiscovery: 1
+  fixedFunction: 0

@@ -15,10 +15,17 @@ MonoBehaviour:
   id: windplain
   regionName: "\uBC14\uB78C \uD3C9\uC6D0"
   locations:
-  - {fileID: 11400000, guid: e52444f9e9c61fc4db65a79598e16b43, type: 2}
-  - {fileID: 11400000, guid: 5959b2836a2bf464bb6f4eedc8397cbb, type: 2}
-  - {fileID: 11400000, guid: f917912049bbff14da1ab3636222f0e2, type: 2}
-  - {fileID: 11400000, guid: 221d5e32dc9edf1469337d18a5d7682c, type: 2}
-  - {fileID: 11400000, guid: de6d3887062522d439568dfc94aaa641, type: 2}
-  - {fileID: 11400000, guid: 60d6b2574af29cf478381710b582f009, type: 2}
-  - {fileID: 11400000, guid: 1dccb99c3b575db4188557180ff20c04, type: 2}
+  - {fileID: 11400000, guid: 08d0d44a51403794395a72b798f63771, type: 2}
+  - {fileID: 11400000, guid: 1d4ca4b3799c876469b764a9d15bde23, type: 2}
+  - {fileID: 11400000, guid: 0b74ff83d15e06d4388248defc829894, type: 2}
+  - {fileID: 11400000, guid: 47233f14fd4b37442af0711a48c501db, type: 2}
+  - {fileID: 11400000, guid: f3f3bf3e4ddd3804faca50b640eed22f, type: 2}
+  - {fileID: 11400000, guid: a7c78988b4268f94f9b8661e8d728f2f, type: 2}
+  - {fileID: 11400000, guid: 1a40375ab364ebb419dde4d082a1f09d, type: 2}
+  - {fileID: 11400000, guid: 303d79a626e5b0f40ac07fa47742a087, type: 2}
+  - {fileID: 11400000, guid: 5fc39267d481c5c4ea59ae5cdbb9c9cb, type: 2}
+  - {fileID: 11400000, guid: ee6c73a2ed250e04e978911774e74600, type: 2}
+  - {fileID: 11400000, guid: ac51fb212fb8aab4c90bdac4f4f8fa8b, type: 2}
+  - {fileID: 11400000, guid: 46002c17d78c81e408ecf197b9b65b21, type: 2}
+  - {fileID: 11400000, guid: b832dfad57012244ba0a8de3c64422cc, type: 2}
+  - {fileID: 11400000, guid: 7cfd036989c39984dbcf661890cbf455, type: 2}

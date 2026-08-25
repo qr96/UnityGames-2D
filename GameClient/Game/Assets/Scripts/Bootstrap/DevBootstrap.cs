@@ -49,11 +49,9 @@ public class DevBootstrap : MonoBehaviour
         runManager.battleController = battleController;
         runManager.travelController = new GameObject("TravelController").AddComponent<TravelController>();
 
-        // 탐험 표현 (지형 레이어 + 장소 라벨/입력 + 카메라 연출)
+        // 탐험 표현 (지형 레이어 + 카메라 연출 — 방향 선택/지도는 씬 UI가 담당)
         new GameObject("WorldEnvironment").AddComponent<WorldEnvironment>();
-        var mapView = new GameObject("WorldMapView").AddComponent<WorldMapView>();
-        if (hud != null) mapView.canvas = hud.GetComponent<Canvas>();
-        mapView.cameraController = new GameObject("CameraController").AddComponent<CameraController>();
+        new GameObject("CameraController").AddComponent<CameraController>();
 
         // 전투 중 소모품 바 연결 (씬 UI)
         if (hud != null && hud.consumableBar != null)
