@@ -10,22 +10,24 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c31b16b75ce21934d94913d5d6653057, type: 3}
-  m_Name: Hero_rogue
+  m_Name: Hero_lia
   m_EditorClassIdentifier: Assembly-CSharp::HeroDefinition
-  id: rogue
-  displayName: "\uB3C4\uC801"
-  unlockedByDefault: 0
-  color: {r: 0.6, g: 0.6, b: 0.7, a: 1}
-  size: 0.75
-  maxHP: 75
-  attack: 20
-  attackRange: 1
-  attackInterval: 0.6
-  moveSpeed: 2.4
-  isHealer: 0
+  id: lia
+  displayName: "\uB9AC\uC544"
+  unlockedByDefault: 1
+  heroClass: 4
+  attackType: 1
+  color: {r: 0.55, g: 0.95, b: 0.65, a: 1}
+  size: 0.8
+  maxHP: 110
+  attack: 10
+  attackRange: 6
+  attackInterval: 1.2
+  moveSpeed: 1.8
+  basicAttackPercent: 80
+  skill: {fileID: 11400000, guid: 1dd04ae64aa274943a0e8dca0c3dacdd, type: 2}
   healPower: 0
   healRange: 0
-  usesProjectile: 0
   projectileSpeed: 9
   basicAttackPowerStat: 1
   healPowerStat: 5

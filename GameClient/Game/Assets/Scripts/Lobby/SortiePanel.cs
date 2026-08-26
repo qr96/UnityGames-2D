@@ -134,6 +134,5 @@ public class SortiePanel : MonoBehaviour
             departButton.interactable = selected.Count == requiredCount;
     }
 
-    static string Role(HeroDefinition d) =>
-        d.isHealer ? "힐러" : (d.attackRange >= 2.5f ? "원거리" : "근접");
+    static string Role(HeroDefinition d) => HeroClassUtil.Korean(d.heroClass);
 }

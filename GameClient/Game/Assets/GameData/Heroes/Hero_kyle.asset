@@ -10,22 +10,24 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c31b16b75ce21934d94913d5d6653057, type: 3}
-  m_Name: Hero_healer
+  m_Name: Hero_kyle
   m_EditorClassIdentifier: Assembly-CSharp::HeroDefinition
-  id: healer
-  displayName: "\uC0AC\uC81C"
+  id: kyle
+  displayName: "\uCE74\uC77C"
   unlockedByDefault: 1
-  color: {r: 0.45, g: 1, b: 0.55, a: 1}
-  size: 0.8
-  maxHP: 80
-  attack: 6
-  attackRange: 2.5
-  attackInterval: 1.1
+  heroClass: 0
+  attackType: 0
+  color: {r: 0.9, g: 0.45, b: 0.3, a: 1}
+  size: 0.95
+  maxHP: 170
+  attack: 18
+  attackRange: 1.5
+  attackInterval: 1.4
   moveSpeed: 1.7
-  isHealer: 1
-  healPower: 14
-  healRange: 3.2
-  usesProjectile: 0
+  basicAttackPercent: 130
+  skill: {fileID: 11400000, guid: bd9b4983a57d57547b80d07a1d80edae, type: 2}
+  healPower: 0
+  healRange: 0
   projectileSpeed: 9
   basicAttackPowerStat: 1
   healPowerStat: 5

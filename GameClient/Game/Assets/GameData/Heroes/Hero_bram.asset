@@ -10,22 +10,24 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c31b16b75ce21934d94913d5d6653057, type: 3}
-  m_Name: Hero_knight
+  m_Name: Hero_bram
   m_EditorClassIdentifier: Assembly-CSharp::HeroDefinition
-  id: knight
-  displayName: "\uAE30\uC0AC"
+  id: bram
+  displayName: "\uBE0C\uB78C"
   unlockedByDefault: 1
-  color: {r: 0.35, g: 0.55, b: 1, a: 1}
-  size: 0.95
-  maxHP: 140
-  attack: 12
-  attackRange: 1.1
-  attackInterval: 0.9
-  moveSpeed: 1.8
-  isHealer: 0
+  heroClass: 0
+  attackType: 0
+  color: {r: 0.4, g: 0.55, b: 0.95, a: 1}
+  size: 1
+  maxHP: 220
+  attack: 14
+  attackRange: 1.2
+  attackInterval: 1.1
+  moveSpeed: 1.6
+  basicAttackPercent: 100
+  skill: {fileID: 11400000, guid: cf802294f617c084ca042e3a542e799b, type: 2}
   healPower: 0
   healRange: 0
-  usesProjectile: 0
   projectileSpeed: 9
   basicAttackPowerStat: 1
   healPowerStat: 5

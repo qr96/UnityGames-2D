@@ -8,9 +8,13 @@ using UnityEngine;
 public class HeroDefinition : ScriptableObject
 {
     [Header("신원")]
-    public string id;                 // 저장/조회용 고유 키 (예: "knight")
+    public string id;                 // 저장/조회용 고유 키 (예: "bram")
     public string displayName;
     public bool unlockedByDefault;    // 최초 보유 영웅 여부
+
+    [Header("분류")]
+    public HeroClass heroClass = HeroClass.Warrior;
+    public AttackType attackType = AttackType.Melee;
 
     [Header("임시 비주얼 (프리팹 전환 전)")]
     public Color color = Color.white;
@@ -23,13 +27,17 @@ public class HeroDefinition : ScriptableObject
     public float attackInterval = 1f;
     public float moveSpeed = 2.5f;
 
-    [Header("힐러 (평시 공격, 부상자 발생 시 힐 우선)")]
-    public bool isHealer;
-    public float healPower = 12f;
-    public float healRange = 3f;
+    [Header("기본 공격 (공격력 대비 %)")]
+    public float basicAttackPercent = 100f;
 
-    [Header("원거리 투사체")]
-    public bool usesProjectile;          // 기본 공격이 투사체로 날아가는가
+    [Header("액티브 스킬")]
+    public SkillDefinition skill;
+
+    [Header("장비 스탯 호환용 (현재 미사용 — 유물/장비가 참조 가능)")]
+    public float healPower;
+    public float healRange;
+
+    [Header("원거리 투사체 (attackType = Ranged일 때)")]
     public float projectileSpeed = 9f;
 
     [Header("행동별 참조 스탯 정의 (GDD 8)")]

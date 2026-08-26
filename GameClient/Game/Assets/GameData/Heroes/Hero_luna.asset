@@ -10,22 +10,24 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c31b16b75ce21934d94913d5d6653057, type: 3}
-  m_Name: Hero_archer
+  m_Name: Hero_luna
   m_EditorClassIdentifier: Assembly-CSharp::HeroDefinition
-  id: archer
-  displayName: "\uAD81\uC218"
+  id: luna
+  displayName: "\uB8E8\uB098"
   unlockedByDefault: 1
-  color: {r: 1, g: 0.8, b: 0.25, a: 1}
+  heroClass: 2
+  attackType: 1
+  color: {r: 1, g: 0.85, b: 0.3, a: 1}
   size: 0.8
   maxHP: 90
-  attack: 16
-  attackRange: 3.5
-  attackInterval: 1.2
+  attack: 15
+  attackRange: 7
+  attackInterval: 0.8
   moveSpeed: 2
-  isHealer: 0
+  basicAttackPercent: 90
+  skill: {fileID: 11400000, guid: 8bda60c2ef3cf334c97835fd242b5ec0, type: 2}
   healPower: 0
   healRange: 0
-  usesProjectile: 1
   projectileSpeed: 9
   basicAttackPowerStat: 1
   healPowerStat: 5

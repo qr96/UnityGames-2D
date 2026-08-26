@@ -26,8 +26,15 @@ public static class GameDataAssetBuilder
         EnsureFolder($"{Root}/Equipment");
         EnsureFolder($"{Root}/World");
 
-        // ---- 영웅 ----
+        // ---- 영웅 + 스킬 (스킬을 먼저 에셋으로 만들어야 영웅 → 스킬 참조가 유지됨) ----
+        EnsureFolder($"{Root}/Skills");
         HeroDatabase heroDb = DevGameData.CreateHeroDatabase();
+        var savedSkills = new System.Collections.Generic.HashSet<SkillDefinition>();
+        foreach (var hero in heroDb.heroes)
+        {
+            if (hero.skill != null && savedSkills.Add(hero.skill))
+                AssetDatabase.CreateAsset(hero.skill, $"{Root}/Skills/Skill_{hero.skill.id}.asset");
+        }
         foreach (var hero in heroDb.heroes)
             AssetDatabase.CreateAsset(hero, $"{Root}/Heroes/Hero_{hero.id}.asset");
         AssetDatabase.CreateAsset(heroDb, $"{Root}/Heroes/HeroDatabase.asset");

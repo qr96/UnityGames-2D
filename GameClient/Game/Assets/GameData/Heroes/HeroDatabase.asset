@@ -13,9 +13,7 @@ MonoBehaviour:
   m_Name: HeroDatabase
   m_EditorClassIdentifier: Assembly-CSharp::HeroDatabase
   heroes:
-  - {fileID: 11400000, guid: 1b3177a46b605b24c89c25c949c0ef0b, type: 2}
-  - {fileID: 11400000, guid: 05b442a47aa2467418a3d33ca03cede3, type: 2}
-  - {fileID: 11400000, guid: d1974b751d3d4ca40aefd3747b5f14df, type: 2}
-  - {fileID: 11400000, guid: e601c30fa02742947abd880f4cf08ddd, type: 2}
-  - {fileID: 11400000, guid: 8aea70a21cb242f4cb149fa67154f03c, type: 2}
-  - {fileID: 11400000, guid: 0aa17ddca2d7c3b44b360d71d8488759, type: 2}
+  - {fileID: 11400000, guid: 7dad9bb13413df6418b1df7f23dc9002, type: 2}
+  - {fileID: 11400000, guid: 8b277bdc47d1b684b89004c1c8223d6d, type: 2}
+  - {fileID: 11400000, guid: 9206220863c300e499ff33cfc80961eb, type: 2}
+  - {fileID: 11400000, guid: cbcb0aac088d57f4da7e92e9692e68bb, type: 2}

@@ -78,15 +78,14 @@ public class HeroManagePanel : MonoBehaviour
         sb.AppendLine($"공격 사거리   {def.attackRange:0.0}");
         sb.AppendLine($"공격 주기     {def.attackInterval:0.0}초");
         sb.AppendLine($"이동 속도     {def.moveSpeed:0.0}");
-        if (def.isHealer)
+        sb.AppendLine($"기본 공격     공격력의 {def.basicAttackPercent:0}%");
+        if (def.skill != null)
         {
             sb.AppendLine();
-            sb.AppendLine($"회복량        {def.healPower:0}");
-            sb.AppendLine($"힐 사거리     {def.healRange:0.0}");
+            sb.AppendLine($"스킬          {def.skill.displayName} (쿨타임 {def.skill.cooldown:0}초)");
         }
         detailText.text = sb.ToString();
     }
 
-    static string Role(HeroDefinition d) =>
-        d.isHealer ? "힐러" : (d.attackRange >= 2.5f ? "원거리" : "근접");
+    static string Role(HeroDefinition d) => HeroClassUtil.Korean(d.heroClass);
 }

@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 670dde59989ce2b429e9977b0f839ec2, type: 3}
+  m_Name: Skill_spinslash
+  m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
+  id: spinslash
+  displayName: "\uD68C\uC804\uCC38"
+  kind: 1
+  trigger: 1
+  cooldown: 7
+  range: 0
+  radius: 2.5
+  duration: 0
+  tickInterval: 1
+  damagePercent: 280
+  effectValue: 0

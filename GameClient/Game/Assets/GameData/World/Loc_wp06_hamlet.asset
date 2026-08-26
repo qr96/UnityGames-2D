@@ -23,7 +23,7 @@ MonoBehaviour:
   previewText: "\uC778\uC801\uC740 \uB4DC\uBB3C\uC9C0\uB9CC \uC548\uC804\uD574 \uBCF4\uC778\uB2E4"
   hasBattle: 0
   canMerchant: 0
-  canEvent: 1
+  canEvent: 0
   hasDedicatedEvent: 1
   canDiscovery: 0
   fixedFunction: 3

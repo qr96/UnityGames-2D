@@ -9,61 +9,98 @@ public static class DevGameData
     public static HeroDatabase CreateHeroDatabase()
     {
         var db = ScriptableObject.CreateInstance<HeroDatabase>();
-        db.heroes.Add(MakeHero("knight",  "기사",   new Color(0.35f, 0.55f, 1f),   0.95f, true,
-            hp: 140f, atk: 12f, range: 1.1f, interval: 0.9f, speed: 1.8f));
-        db.heroes.Add(MakeHero("archer",  "궁수",   new Color(1f, 0.8f, 0.25f),    0.80f, true,
-            hp: 90f,  atk: 16f, range: 3.5f, interval: 1.2f, speed: 2.0f,
-            projectile: true));
-        db.heroes.Add(MakeHero("healer",  "사제",   new Color(0.45f, 1f, 0.55f),   0.80f, true,
-            hp: 80f,  atk: 6f,  range: 2.5f, interval: 1.1f, speed: 1.7f,
-            healer: true, healPower: 14f, healRange: 3.2f));
-        db.heroes.Add(MakeHero("rogue",   "도적",   new Color(0.6f, 0.6f, 0.7f),   0.75f, false,
-            hp: 75f,  atk: 20f, range: 1.0f, interval: 0.6f, speed: 2.4f));
-        db.heroes.Add(MakeHero("mage",    "마법사", new Color(0.75f, 0.45f, 1f),   0.80f, false,
-            hp: 70f,  atk: 26f, range: 4.2f, interval: 1.8f, speed: 1.6f,
-            projectile: true));
-        db.heroes.Add(MakeHero("paladin", "성기사", new Color(1f, 0.95f, 0.7f),    1.00f, false,
-            hp: 180f, atk: 10f, range: 1.2f, interval: 1.1f, speed: 1.5f));
+
+        // ---- 스킬 (기획 표 수치 그대로) ----
+        var ironWall = MakeSkill("ironwall", "철벽", SkillKind.IronWall, SkillTrigger.WhileEngaged,
+            cooldown: 10f, duration: 4f, effectValue: 60f); // 4초간 받는 피해 -60%
+        var spinSlash = MakeSkill("spinslash", "회전참", SkillKind.SpinSlash, SkillTrigger.SelfCenteredAttack,
+            cooldown: 7f, radius: 2.5f, damagePercent: 280f);
+        var pierceShot = MakeSkill("pierceshot", "관통사격", SkillKind.PierceShot, SkillTrigger.TargetedAttack,
+            cooldown: 6f, range: 10f, radius: 0.8f, damagePercent: 220f); // radius = 폭
+        var sanctuary = MakeSkill("sanctuary", "성역", SkillKind.Sanctuary, SkillTrigger.HealAlly,
+            cooldown: 12f, radius: 4f, duration: 4f, tickInterval: 1f, effectValue: 5f); // 매초 최대HP 5%
+
+        // ---- 1차 영웅 4명 (스킬 축 검증: 버프/광역/관통/회복존) ----
+        // 기본 스탯(HP/공격/이속)은 초안 — 에셋에서 튜닝. 영입 보류 중이라 전원 기본 해금.
+        db.heroes.Add(MakeHero("bram", "브람", HeroClass.Warrior, AttackType.Melee,
+            new Color(0.40f, 0.55f, 0.95f), 1.00f, unlocked: true,
+            hp: 220f, atk: 14f, range: 1.2f, interval: 1.1f, speed: 1.6f,
+            basicPercent: 100f, skill: ironWall));       // 방패 가격 100%
+
+        db.heroes.Add(MakeHero("kyle", "카일", HeroClass.Warrior, AttackType.Melee,
+            new Color(0.90f, 0.45f, 0.30f), 0.95f, unlocked: true,
+            hp: 170f, atk: 18f, range: 1.5f, interval: 1.4f, speed: 1.7f,
+            basicPercent: 130f, skill: spinSlash));      // 대검 베기 130%
+
+        db.heroes.Add(MakeHero("luna", "루나", HeroClass.Ranger, AttackType.Ranged,
+            new Color(1.00f, 0.85f, 0.30f), 0.80f, unlocked: true,
+            hp: 90f, atk: 15f, range: 7.0f, interval: 0.8f, speed: 2.0f,
+            basicPercent: 90f, skill: pierceShot));      // 화살 90%
+
+        db.heroes.Add(MakeHero("lia", "리아", HeroClass.Support, AttackType.Ranged,
+            new Color(0.55f, 0.95f, 0.65f), 0.80f, unlocked: true,
+            hp: 110f, atk: 10f, range: 6.0f, interval: 1.2f, speed: 1.8f,
+            basicPercent: 80f, skill: sanctuary));       // 성광탄 80%
+
         return db;
+    }
+
+    static SkillDefinition MakeSkill(string id, string name, SkillKind kind, SkillTrigger trigger,
+        float cooldown, float range = 0f, float radius = 0f, float duration = 0f,
+        float tickInterval = 1f, float damagePercent = 0f, float effectValue = 0f)
+    {
+        var sk = ScriptableObject.CreateInstance<SkillDefinition>();
+        sk.id = id;
+        sk.displayName = name;
+        sk.kind = kind;
+        sk.trigger = trigger;
+        sk.cooldown = cooldown;
+        sk.range = range;
+        sk.radius = radius;
+        sk.duration = duration;
+        sk.tickInterval = tickInterval;
+        sk.damagePercent = damagePercent;
+        sk.effectValue = effectValue;
+        return sk;
+    }
+
+    static HeroDefinition MakeHero(string id, string name, HeroClass heroClass, AttackType attackType,
+        Color color, float size, bool unlocked,
+        float hp, float atk, float range, float interval, float speed,
+        float basicPercent, SkillDefinition skill)
+    {
+        var d = ScriptableObject.CreateInstance<HeroDefinition>();
+        d.id = id;
+        d.displayName = name;
+        d.heroClass = heroClass;
+        d.attackType = attackType;
+        d.color = color;
+        d.size = size;
+        d.unlockedByDefault = unlocked;
+        d.maxHP = hp;
+        d.attack = atk;
+        d.attackRange = range;
+        d.attackInterval = interval;
+        d.moveSpeed = speed;
+        d.basicAttackPercent = basicPercent;
+        d.skill = skill;
+        return d;
     }
 
     public static EquipmentDatabase CreateEquipmentDatabase()
     {
         var db = ScriptableObject.CreateInstance<EquipmentDatabase>();
-        db.items.Add(MakeEquip("sword",  "낡은 검",      Mod(StatType.Attack, flat: 5f)));
-        db.items.Add(MakeEquip("armor",  "사슬 갑옷",    Mod(StatType.MaxHP, flat: 40f)));
-        db.items.Add(MakeEquip("boots",  "바람의 신발",  Mod(StatType.MoveSpeed, pct: 20f)));
-        db.items.Add(MakeEquip("lens",   "저격 렌즈",    Mod(StatType.AttackRange, flat: 0.6f)));
-        db.items.Add(MakeEquip("ring",   "축복의 반지",  Mod(StatType.HealPower, flat: 8f)));
+        db.items.Add(MakeEquip("sword", "낡은 검", Mod(StatType.Attack, flat: 5f)));
+        db.items.Add(MakeEquip("armor", "사슬 갑옷", Mod(StatType.MaxHP, flat: 40f)));
+        db.items.Add(MakeEquip("boots", "바람의 신발", Mod(StatType.MoveSpeed, pct: 20f)));
+        db.items.Add(MakeEquip("lens", "저격 렌즈", Mod(StatType.AttackRange, flat: 0.6f)));
+        db.items.Add(MakeEquip("ring", "축복의 반지", Mod(StatType.HealPower, flat: 8f)));
         return db;
     }
 
     public static RunConfig CreateRunConfig()
     {
         return ScriptableObject.CreateInstance<RunConfig>(); // 필드 기본값 사용
-    }
-
-    static HeroDefinition MakeHero(string id, string name, Color color, float size, bool unlockedByDefault,
-        float hp, float atk, float range, float interval, float speed,
-        bool healer = false, float healPower = 0f, float healRange = 0f,
-        bool projectile = false)
-    {
-        var d = ScriptableObject.CreateInstance<HeroDefinition>();
-        d.id = id;
-        d.displayName = name;
-        d.color = color;
-        d.size = size;
-        d.unlockedByDefault = unlockedByDefault;
-        d.maxHP = hp;
-        d.attack = atk;
-        d.attackRange = range;
-        d.attackInterval = interval;
-        d.moveSpeed = speed;
-        d.isHealer = healer;
-        d.healPower = healPower;
-        d.healRange = healRange;
-        d.usesProjectile = projectile;
-        return d;
     }
 
     static EquipmentDefinition MakeEquip(string id, string name, params StatModifier[] mods)

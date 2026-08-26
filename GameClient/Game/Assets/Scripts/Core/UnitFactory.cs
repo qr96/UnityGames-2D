@@ -26,6 +26,10 @@ public static class UnitFactory
         hero.Init(instance); // 장비 반영된 최종 스탯으로 초기화
         hero.radius = def.size * 0.5f; // 겹침 방지 반경 = 비주얼 반지름
 
+        // 액티브 스킬 (자동 발동)
+        if (def.skill != null)
+            go.AddComponent<SkillRunner>().Init(hero, def.skill);
+
         AddHealthBar(hero, new Color(0.3f, 1f, 0.4f));
         return hero;
     }
@@ -51,6 +55,19 @@ public static class UnitFactory
 
         AddHealthBar(enemy, new Color(1f, 0.45f, 0.35f));
         return enemy;
+    }
+
+    /// <summary>직선 관통 투사체 생성 (관통사격). 비주얼 교체 지점.</summary>
+    public static PierceProjectile SpawnPierceShot(Vector3 start, Vector3 dir, float damage, float maxDistance, float width)
+    {
+        var go = new GameObject("PierceShot");
+        go.transform.position = start;
+        var sr = MakeVisual(go.transform, Square, new Color(1f, 0.95f, 0.5f), 1f, sortingOrder: 7);
+        sr.transform.localScale = new Vector3(1.1f, Mathf.Max(0.2f, width * 0.6f), 1f);
+
+        var p = go.AddComponent<PierceProjectile>();
+        p.Init(dir, damage, maxDistance, width);
+        return p;
     }
 
     /// <summary>포션 투척체 생성. 비주얼 교체 지점 (아트 시 프리팹으로).</summary>

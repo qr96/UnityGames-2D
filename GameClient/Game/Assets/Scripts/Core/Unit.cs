@@ -20,6 +20,9 @@ public abstract class Unit : MonoBehaviour
 
     public event Action<Unit> OnDeath;
 
+    /// <summary>시간제 버프/디버프 (없으면 null — GetStatus로 지연 생성)</summary>
+    public StatusEffects Status { get; private set; }
+
     protected SpriteRenderer sr;
     Coroutine flashRoutine;
     Color baseColor;
@@ -46,9 +49,17 @@ public abstract class Unit : MonoBehaviour
         CurrentHP = Mathf.Clamp(current, 0f, max);
     }
 
+    public StatusEffects GetStatus()
+    {
+        if (Status == null) Status = gameObject.AddComponent<StatusEffects>();
+        return Status;
+    }
+
     public virtual void TakeDamage(float amount)
     {
         if (IsDead) return;
+        if (Status != null)
+            amount *= Status.Multiplier(StatusEffects.Kind.DamageTaken); // 철벽 등 피해감소
         CurrentHP = Mathf.Max(0f, CurrentHP - amount);
         Flash(new Color(1f, 0.35f, 0.3f));
         if (IsDead) Die();
