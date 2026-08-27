@@ -43,8 +43,9 @@ public class ZoneEffect : MonoBehaviour
         if (tickTimer <= 0f)
         {
             tickTimer += tickInterval;
-            foreach (Unit u in UnitRegistry.GetAll(targetTeam))
-                if (Vector2.Distance(u.transform.position, transform.position) <= radius)
+            foreach (Unit u in UnitRegistry.GetAll(targetTeam).ToArray()) // 스냅샷: 처치로 목록이 변해도 안전
+                if (u != null && !u.IsDead &&
+                    Vector2.Distance(u.transform.position, transform.position) <= radius)
                     onTick?.Invoke(u);
         }
 

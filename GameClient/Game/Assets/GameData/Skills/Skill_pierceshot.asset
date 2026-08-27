@@ -23,3 +23,5 @@ MonoBehaviour:
   tickInterval: 1
   damagePercent: 220
   effectValue: 0
+  effectValue2: 0
+  effectValue3: 0

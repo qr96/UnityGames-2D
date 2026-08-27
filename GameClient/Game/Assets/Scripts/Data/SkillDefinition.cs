@@ -3,10 +3,22 @@ using UnityEngine;
 /// <summary>스킬 실행 로직 종류 — SkillRunner.Execute가 이 값으로 분기 (영웅 추가 시 확장)</summary>
 public enum SkillKind
 {
-    IronWall,   // 철벽: 자신에게 받는 피해 감소 버프
-    SpinSlash,  // 회전참: 자기 중심 광역 피해
-    PierceShot, // 관통사격: 직선 관통 투사체
-    Sanctuary,  // 성역: 자기 중심 회복 지속 영역
+    IronWall,     // 철벽: 자신에게 받는 피해 감소 버프
+    SpinSlash,    // 회전참: 자기 중심 광역 피해
+    PierceShot,   // 관통사격: 직선 관통 투사체
+    Sanctuary,    // 성역: 자기 중심 회복 지속 영역
+    EarthSmash,   // 대지강타: 자기 중심 광역 피해 + 밀침 + 기절
+    Berserk,      // 광폭화: 자신 공속/공격력/흡혈 버프
+    AbsoluteZero, // 절대영도: 자기 중심 광역 피해 + 빙결
+    DoomMark,       // 파멸의 표식: 대상이 받는 피해 증가
+    TimeWarp,       // 시간 왜곡: 대상 위치에 적 이속/공속 감소 지속 영역
+    BladeStorm,     // 칼날폭풍: 일정 시간 자기 주변 반복 타격 (이동하며 유지)
+    Snipe,          // 저격: 조준 채널링 후 대상에게 고정 피해
+    RapidFire,      // 속사: 채널링 연사, 처치 시 사거리 내 최근접 적으로 전환
+    Meteor,         // 메테오: 대상 위치 광역 피해 + 화염지대
+    ChainLightning, // 연쇄번개: 적 사이를 점프하며 피해
+    PoisonCloud,    // 맹독 구름: 대상 위치에 초당 피해 지속 영역
+    Encore,         // 앙코르: 범위 아군 쿨타임 감소 + 공속 버프
 }
 
 /// <summary>발동 조건 형태 (확정 규칙 — 쿨타임이 돌면 조건 충족 시 자동 발동)</summary>
@@ -46,6 +58,10 @@ public class SkillDefinition : ScriptableObject
     public float tickInterval = 1f;
     [Tooltip("공격력 대비 피해 %")]
     public float damagePercent;
-    [Tooltip("범용 효과 수치 — 피해감소 % / 최대HP 회복 % 등")]
+    [Tooltip("범용 효과 수치 1 — 피해감소 % / 회복 % / 밀침 거리 / 이속 감소 % 등")]
     public float effectValue;
+    [Tooltip("범용 효과 수치 2 — 기절 시간 / 공격력 증가 % / 공속 감소 % 등")]
+    public float effectValue2;
+    [Tooltip("범용 효과 수치 3 — 흡혈 % 등")]
+    public float effectValue3;
 }

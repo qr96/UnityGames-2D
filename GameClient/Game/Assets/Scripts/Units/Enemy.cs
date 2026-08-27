@@ -27,6 +27,9 @@ public class Enemy : Unit
         if (IsDead || data == null) return;
         if (!BattleController.CombatActive) return; // 교전 중에만 행동
 
+        // 기절/빙결: 행동 불가 (피격은 가능)
+        if (Status != null && Status.IsStunned) return;
+
         attackTimer -= Time.deltaTime;
 
         Unit target = UnitRegistry.GetNearest(Team.Hero, transform.position);
@@ -35,14 +38,17 @@ public class Enemy : Unit
         float dist = Vector2.Distance(transform.position, target.transform.position);
         if (dist > data.attackRange)
         {
+            float speed = data.moveSpeed *
+                (Status != null ? Status.Multiplier(StatusEffects.Kind.MoveSpeed) : 1f); // 시간 왜곡 등
             transform.position = Vector3.MoveTowards(
                 transform.position, target.transform.position,
-                data.moveSpeed * Time.deltaTime);
+                speed * Time.deltaTime);
         }
         else if (attackTimer <= 0f)
         {
             target.TakeDamage(data.attackDamage);
-            attackTimer = data.attackInterval;
+            float speedMult = Status != null ? Status.Multiplier(StatusEffects.Kind.AttackSpeed) : 1f;
+            attackTimer = data.attackInterval / Mathf.Max(0.1f, speedMult);
         }
     }
 }

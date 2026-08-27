@@ -23,6 +23,11 @@ public class Hero : Unit
     /// <summary>적을 공격 중인가 (대상이 있고 기본 공격 사거리 안)</summary>
     public bool IsEngaged { get; private set; }
 
+    /// <summary>채널링 중 (저격 조준/속사 등) — 이동/기본 공격 정지. SkillRunner가 설정.</summary>
+    public bool IsChanneling { get; private set; }
+
+    public void SetChanneling(bool value) => IsChanneling = value;
+
     /// <summary>스킬 피해 계산용 — 버프 계수가 반영된 현재 공격력</summary>
     public float AttackPower =>
         attackPower * (Status != null ? Status.Multiplier(StatusEffects.Kind.Damage) : 1f);
@@ -30,6 +35,8 @@ public class Hero : Unit
     // 전투 시작 시 캐시되는 최종 스탯 (장비 반영)
     float attackPower;
     float basicAttackPercent = 100f;
+    float poisonTotalPercent;
+    float poisonDuration = 3f;
     float attackRange;
     float attackInterval;
     float moveSpeed;
@@ -69,6 +76,8 @@ public class Hero : Unit
         attackInterval = Mathf.Max(0.05f, instance.GetStat(StatType.AttackInterval));
         moveSpeed = instance.GetStat(StatType.MoveSpeed);
 
+        poisonTotalPercent = def.basicPoisonTotalPercent;
+        poisonDuration = def.basicPoisonDuration;
         attackType = def.attackType;
         projectileSpeed = def.projectileSpeed;
         projectileColor = def.color;
@@ -116,6 +125,13 @@ public class Hero : Unit
             return;
         }
 
+        // 채널링 (조준/연사): 스킬이 행동을 점유 — 이동/기본 공격 정지
+        if (IsChanneling)
+        {
+            CurrentState = State.Act;
+            return;
+        }
+
         actTimer -= Time.deltaTime;
 
         // 가장 가까운 적을 공격
@@ -154,13 +170,23 @@ public class Hero : Unit
     {
         float damage = AttackPower * basicAttackPercent / 100f;
 
+        // 기본 공격 독 (모모): 총량을 지속시간에 분배, 비중첩 — 지속시간 갱신
+        System.Action<Unit> onHit = null;
+        if (poisonTotalPercent > 0f)
+        {
+            float poisonTotal = AttackPower * poisonTotalPercent / 100f;
+            float duration = poisonDuration;
+            onHit = u => u.GetStatus().AddOrRefreshDot("poison_basic", poisonTotal, duration);
+        }
+
         if (attackType == AttackType.Ranged)
         {
-            UnitFactory.SpawnProjectile(transform.position, enemy, damage, projectileSpeed, projectileColor);
+            UnitFactory.SpawnProjectile(transform.position, enemy, damage, projectileSpeed, projectileColor, onHit);
         }
         else
         {
             enemy.TakeDamage(damage);
+            if (!enemy.IsDead) onHit?.Invoke(enemy);
 
             // 흡혈 (광폭화 등) — 근접 즉시 타격에만 적용 (투사체 흡혈은 추후)
             float lifesteal = Status != null ? Status.Sum(StatusEffects.Kind.Lifesteal) : 0f;
@@ -174,6 +200,7 @@ public class Hero : Unit
     public void Grab()
     {
         if (IsDead) return;
+        IsChanneling = false; // 잡히면 채널링(조준/연사) 취소 — SkillRunner도 이를 감지해 중단
         CurrentState = State.Grabbed;
         grabWorldPos = transform.position;
         wigglePhase = 0f;

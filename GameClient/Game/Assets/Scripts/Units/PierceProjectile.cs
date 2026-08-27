@@ -38,7 +38,7 @@ public class PierceProjectile : MonoBehaviour
         transform.position += dir * step;
         traveled += step;
 
-        foreach (Unit u in UnitRegistry.GetAll(Team.Enemy))
+        foreach (Unit u in UnitRegistry.GetAll(Team.Enemy).ToArray()) // 스냅샷: 처치로 목록이 변해도 안전
         {
             if (hit.Contains(u)) continue;
             if (Vector2.Distance(u.transform.position, transform.position) <= halfWidth + u.radius)

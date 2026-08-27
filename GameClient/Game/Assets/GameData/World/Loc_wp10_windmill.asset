@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: "\uD48D\uCC28 \uC5B8\uB355"
   type: 0
   worldPosition: {x: 0, y: 84}
-  north: {fileID: 11400000, guid: 46002c17d78c81e408ecf197b9b65b21, type: 2}
+  north: {fileID: 0}
   south: {fileID: 0}
   west: {fileID: 0}
   east: {fileID: 0}

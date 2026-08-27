@@ -83,14 +83,14 @@ public static class UnitFactory
     }
 
     /// <summary>투사체 생성. 비주얼 교체 지점 (아트 시 프리팹으로).</summary>
-    public static Projectile SpawnProjectile(Vector3 from, Unit target, float damage, float speed, Color color)
+    public static Projectile SpawnProjectile(Vector3 from, Unit target, float damage, float speed, Color color, System.Action<Unit> onHit = null)
     {
         var go = new GameObject("Projectile");
         go.transform.position = from;
         MakeVisual(go.transform, Circle, color, 0.25f, sortingOrder: 6);
 
         var p = go.AddComponent<Projectile>();
-        p.Init(target, damage, speed);
+        p.Init(target, damage, speed, onHit);
         return p;
     }
 

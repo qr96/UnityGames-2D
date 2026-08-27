@@ -29,6 +29,9 @@ public class HeroDefinition : ScriptableObject
 
     [Header("기본 공격 (공격력 대비 %)")]
     public float basicAttackPercent = 100f;
+    [Tooltip("기본 공격 독: 지속시간에 걸친 총 피해 % (0 = 없음). 비중첩 — 지속시간 갱신")]
+    public float basicPoisonTotalPercent;
+    public float basicPoisonDuration = 3f;
 
     [Header("액티브 스킬")]
     public SkillDefinition skill;

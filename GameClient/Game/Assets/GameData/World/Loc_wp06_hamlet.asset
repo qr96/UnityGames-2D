@@ -16,10 +16,10 @@ MonoBehaviour:
   displayName: "\uC791\uC740 \uCD0C\uB77D"
   type: 1
   worldPosition: {x: -16, y: 56}
-  north: {fileID: 11400000, guid: 303d79a626e5b0f40ac07fa47742a087, type: 2}
+  north: {fileID: 0}
   south: {fileID: 0}
   west: {fileID: 0}
-  east: {fileID: 11400000, guid: 1a40375ab364ebb419dde4d082a1f09d, type: 2}
+  east: {fileID: 0}
   previewText: "\uC778\uC801\uC740 \uB4DC\uBB3C\uC9C0\uB9CC \uC548\uC804\uD574 \uBCF4\uC778\uB2E4"
   hasBattle: 0
   canMerchant: 0

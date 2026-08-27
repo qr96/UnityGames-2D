@@ -11,12 +11,14 @@ public class Projectile : MonoBehaviour
     Vector3 lastTargetPos;
     float damage;
     float speed;
+    System.Action<Unit> onHit; // 명중 시 추가 효과 (독 등)
 
-    public void Init(Unit target, float damage, float speed)
+    public void Init(Unit target, float damage, float speed, System.Action<Unit> onHit = null)
     {
         this.target = target;
         this.damage = damage;
         this.speed = speed;
+        this.onHit = onHit;
         lastTargetPos = target != null ? target.transform.position : transform.position;
     }
 
@@ -36,7 +38,11 @@ public class Projectile : MonoBehaviour
 
         if (Vector2.Distance(transform.position, lastTargetPos) < 0.06f)
         {
-            if (targetAlive) target.TakeDamage(damage);
+            if (targetAlive)
+            {
+                target.TakeDamage(damage);
+                if (!target.IsDead) onHit?.Invoke(target);
+            }
             Destroy(gameObject);
         }
     }

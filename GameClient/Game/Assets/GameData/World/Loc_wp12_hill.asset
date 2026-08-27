@@ -19,7 +19,7 @@ MonoBehaviour:
   north: {fileID: 0}
   south: {fileID: 0}
   west: {fileID: 0}
-  east: {fileID: 11400000, guid: 7cfd036989c39984dbcf661890cbf455, type: 2}
+  east: {fileID: 0}
   previewText: "\uC5B8\uB355 \uB108\uBA38\uAC00 \uBCF4\uC774\uC9C0 \uC54A\uB294\uB2E4"
   hasBattle: 1
   canMerchant: 0

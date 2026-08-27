@@ -25,6 +25,8 @@ MonoBehaviour:
   attackInterval: 1.2
   moveSpeed: 1.8
   basicAttackPercent: 80
+  basicPoisonTotalPercent: 0
+  basicPoisonDuration: 3
   skill: {fileID: 11400000, guid: 1dd04ae64aa274943a0e8dca0c3dacdd, type: 2}
   healPower: 0
   healRange: 0

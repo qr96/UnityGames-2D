@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c31b16b75ce21934d94913d5d6653057, type: 3}
+  m_Name: Hero_zet
+  m_EditorClassIdentifier: Assembly-CSharp::HeroDefinition
+  id: zet
+  displayName: "\uC81C\uD2B8"
+  unlockedByDefault: 1
+  heroClass: 3
+  attackType: 1
+  color: {r: 0.45, g: 0.75, b: 1, a: 1}
+  size: 0.8
+  maxHP: 85
+  attack: 16
+  attackRange: 5
+  attackInterval: 1
+  moveSpeed: 1.7
+  basicAttackPercent: 95
+  basicPoisonTotalPercent: 0
+  basicPoisonDuration: 3
+  skill: {fileID: 11400000, guid: 17a42d7fb732f204e9de8d08bbfbba09, type: 2}
+  healPower: 0
+  healRange: 0
+  projectileSpeed: 9
+  basicAttackPowerStat: 1
+  healPowerStat: 5
+  wiggleSpeed: 20
+  wiggleAngle: 12
+  landingDelay: 0.35

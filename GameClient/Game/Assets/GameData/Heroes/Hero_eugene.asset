@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c31b16b75ce21934d94913d5d6653057, type: 3}
+  m_Name: Hero_eugene
+  m_EditorClassIdentifier: Assembly-CSharp::HeroDefinition
+  id: eugene
+  displayName: "\uC720\uC9C4"
+  unlockedByDefault: 1
+  heroClass: 2
+  attackType: 1
+  color: {r: 0.9, g: 0.65, b: 0.35, a: 1}
+  size: 0.8
+  maxHP: 95
+  attack: 12
+  attackRange: 6.5
+  attackInterval: 0.7
+  moveSpeed: 1.9
+  basicAttackPercent: 75
+  basicPoisonTotalPercent: 0
+  basicPoisonDuration: 3
+  skill: {fileID: 11400000, guid: f17a4200968007c4d9361f45ca7c25fb, type: 2}
+  healPower: 0
+  healRange: 0
+  projectileSpeed: 9
+  basicAttackPowerStat: 1
+  healPowerStat: 5
+  wiggleSpeed: 20
+  wiggleAngle: 12
+  landingDelay: 0.35

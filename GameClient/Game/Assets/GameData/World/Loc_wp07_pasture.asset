@@ -16,9 +16,9 @@ MonoBehaviour:
   displayName: "\uBAA9\uCD08\uC9C0"
   type: 0
   worldPosition: {x: 16, y: 56}
-  north: {fileID: 11400000, guid: 5fc39267d481c5c4ea59ae5cdbb9c9cb, type: 2}
+  north: {fileID: 0}
   south: {fileID: 0}
-  west: {fileID: 11400000, guid: 303d79a626e5b0f40ac07fa47742a087, type: 2}
+  west: {fileID: 0}
   east: {fileID: 0}
   previewText: "\uD480 \uB72F\uB358 \uD754\uC801\uB9CC \uB0A8\uC544 \uC788\uB2E4"
   hasBattle: 1

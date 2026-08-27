@@ -25,7 +25,23 @@ public class StatusEffects : MonoBehaviour
         public float timeLeft;
     }
 
+    class Dot
+    {
+        public string id;
+        public float damagePerTick;
+        public float tickInterval;
+        public float timeLeft;
+        public float tickTimer;
+    }
+
     readonly List<Mod> mods = new List<Mod>();
+    readonly List<Dot> dots = new List<Dot>();
+    Unit unit;
+
+    void Awake()
+    {
+        unit = GetComponent<Unit>();
+    }
 
     void Update()
     {
@@ -35,6 +51,50 @@ public class StatusEffects : MonoBehaviour
             if (mods[i].timeLeft <= 0f)
                 mods.RemoveAt(i);
         }
+
+        // 지속 피해 (독 등)
+        for (int i = dots.Count - 1; i >= 0; i--)
+        {
+            Dot dot = dots[i];
+            dot.timeLeft -= Time.deltaTime;
+            dot.tickTimer -= Time.deltaTime;
+
+            if (dot.tickTimer <= 0f && unit != null && !unit.IsDead)
+            {
+                dot.tickTimer += dot.tickInterval;
+                unit.TakeDamage(dot.damagePerTick);
+            }
+            if (dot.timeLeft <= 0f)
+                dots.RemoveAt(i);
+        }
+    }
+
+    /// <summary>
+    /// 지속 피해 부여 — 같은 id는 중첩되지 않고 지속시간/피해가 갱신됨 (확정 규칙).
+    /// totalDamage를 duration에 걸쳐 tickInterval마다 균등 분배. 첫 틱은 tickInterval 후.
+    /// </summary>
+    public void AddOrRefreshDot(string id, float totalDamage, float duration, float tickInterval = 1f)
+    {
+        int ticks = Mathf.Max(1, Mathf.RoundToInt(duration / tickInterval));
+        float perTick = totalDamage / ticks;
+
+        foreach (var dot in dots)
+        {
+            if (dot.id != id) continue;
+            dot.damagePerTick = perTick;
+            dot.tickInterval = tickInterval;
+            dot.timeLeft = duration; // 갱신 (틱 타이머는 유지)
+            return;
+        }
+
+        dots.Add(new Dot
+        {
+            id = id,
+            damagePerTick = perTick,
+            tickInterval = tickInterval,
+            timeLeft = duration,
+            tickTimer = tickInterval,
+        });
     }
 
     public void Add(Kind kind, float value, float duration)
