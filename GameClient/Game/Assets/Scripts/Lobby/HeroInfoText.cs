@@ -30,7 +30,15 @@ public static class HeroInfoText
         }
 
         string trait = TraitCatalog.DisplayName(hero.traitId);
-        sb.AppendLine($"특성          {(string.IsNullOrEmpty(trait) ? "-" : trait)}");
+        if (string.IsNullOrEmpty(trait))
+        {
+            sb.AppendLine("특성          -");
+        }
+        else
+        {
+            sb.AppendLine($"특성          {trait}");
+            sb.AppendLine($"              {TraitCatalog.Description(hero.traitId)}");
+        }
         return sb.ToString();
     }
 

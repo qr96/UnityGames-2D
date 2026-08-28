@@ -31,9 +31,26 @@ public class Hero : Unit
     /// <summary>장착 무기 (스킬 무기 조건 판정용) — null = 미장착</summary>
     public WeaponDefinition Weapon => Runtime != null ? Runtime.weapon : null;
 
-    /// <summary>스킬 피해 계산용 — 버프 계수가 반영된 현재 공격력</summary>
+    /// <summary>특성 구동기 (특성 스펙 v1) — TraitRunner.Init이 연결. 없으면 중립.</summary>
+    TraitRunner traits;
+    public void AttachTraits(TraitRunner runner) => traits = runner;
+
+    /// <summary>처형인 등 대상 조건 특성 배수 — 피해 지점에서 대상별로 적용</summary>
+    public float TraitDamageMultVsTarget(Unit target) =>
+        traits != null ? traits.DamageMultVsTarget(target) : 1f;
+
+    /// <summary>스킬 피해 계산용 — 버프 계수 + 특성(자기/주변 조건) 배수가 반영된 현재 공격력</summary>
     public float AttackPower =>
-        attackPower * (Status != null ? Status.Multiplier(StatusEffects.Kind.Damage) : 1f);
+        attackPower
+        * (Status != null ? Status.Multiplier(StatusEffects.Kind.Damage) : 1f)
+        * (traits != null ? traits.AttackMult : 1f);
+
+    /// <summary>특성 받는 피해 배수 적용 (끈질김/전우애/수호자/무모함)</summary>
+    public override void TakeDamage(float amount)
+    {
+        if (traits != null) amount *= traits.TakenMult;
+        base.TakeDamage(amount);
+    }
 
     // 전투 시작 시 캐시되는 최종 스탯 (장비 반영)
     float attackPower;
@@ -192,6 +209,7 @@ public class Hero : Unit
     void Attack(Unit enemy)
     {
         float damage = AttackPower * basicAttackPercent / 100f;
+        damage *= TraitDamageMultVsTarget(enemy); // 처형인 (특성 스펙 v1)
 
         // 치명타 (영웅 스펙 v2) — 기본 공격 피해에 적용 (스킬 치명타는 스킬 개편 시 결정)
         if (Random.value * 100f < critChance)

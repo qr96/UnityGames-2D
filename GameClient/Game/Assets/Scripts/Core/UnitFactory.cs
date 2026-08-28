@@ -31,6 +31,11 @@ public static class UnitFactory
         if (activeSkill != null)
             go.AddComponent<SkillRunner>().Init(hero, activeSkill);
 
+        // 조건부 고유 특성 (특성 스펙 v1)
+        string traitId = instance.owned != null ? instance.owned.traitId : "";
+        if (!string.IsNullOrEmpty(traitId))
+            go.AddComponent<TraitRunner>().Init(hero, traitId);
+
         AddHealthBar(hero, new Color(0.3f, 1f, 0.4f));
         return hero;
     }
