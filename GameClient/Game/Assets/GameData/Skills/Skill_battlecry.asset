@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 670dde59989ce2b429e9977b0f839ec2, type: 3}
+  m_Name: Skill_battlecry
+  m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
+  id: battlecry
+  displayName: "\uC804\uD22C \uD568\uC131"
+  kind: 6
+  activation: 1
+  weaponRequirement: 0
+  cooldown: 15
+  range: 0
+  radius: 3.5
+  duration: 5
+  tickInterval: 1
+  damagePercent: 0
+  effectValue: 25
+  effectValue2: 25

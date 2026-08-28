@@ -15,11 +15,13 @@ MonoBehaviour:
   id: wp08_wheat
   displayName: "\uBC00\uBC2D"
   type: 0
+  nodeType: 0
+  descendTo: {fileID: 0}
   worldPosition: {x: -16, y: 70}
   north: {fileID: 0}
   south: {fileID: 0}
   west: {fileID: 0}
-  east: {fileID: 0}
+  east: {fileID: 11400000, guid: ee6c73a2ed250e04e978911774e74600, type: 2}
   previewText: "\uBC00\uC774 \uC5B4\uC9C0\uB7FD\uAC8C \uC4F0\uB7EC\uC838 \uC788\uB2E4"
   hasBattle: 1
   canMerchant: 0

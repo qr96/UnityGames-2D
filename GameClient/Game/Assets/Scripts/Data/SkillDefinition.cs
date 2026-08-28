@@ -1,39 +1,44 @@
 using UnityEngine;
 
-/// <summary>스킬 실행 로직 종류 — SkillRunner.Execute가 이 값으로 분기 (영웅 추가 시 확장)</summary>
+/// <summary>액티브 스킬 종류 (액티브 스펙 v2 — 10종 풀). 기존 16종은 폐기.</summary>
 public enum SkillKind
 {
-    IronWall,     // 철벽: 자신에게 받는 피해 감소 버프
-    SpinSlash,    // 회전참: 자기 중심 광역 피해
-    PierceShot,   // 관통사격: 직선 관통 투사체
-    Sanctuary,    // 성역: 자기 중심 회복 지속 영역
-    EarthSmash,   // 대지강타: 자기 중심 광역 피해 + 밀침 + 기절
-    Berserk,      // 광폭화: 자신 공속/공격력/흡혈 버프
-    AbsoluteZero, // 절대영도: 자기 중심 광역 피해 + 빙결
-    DoomMark,       // 파멸의 표식: 대상이 받는 피해 증가
-    TimeWarp,       // 시간 왜곡: 대상 위치에 적 이속/공속 감소 지속 영역
-    BladeStorm,     // 칼날폭풍: 일정 시간 자기 주변 반복 타격 (이동하며 유지)
-    Snipe,          // 저격: 조준 채널링 후 대상에게 고정 피해
-    RapidFire,      // 속사: 채널링 연사, 처치 시 사거리 내 최근접 적으로 전환
-    Meteor,         // 메테오: 대상 위치 광역 피해 + 화염지대
-    ChainLightning, // 연쇄번개: 적 사이를 점프하며 피해
-    PoisonCloud,    // 맹독 구름: 대상 위치에 초당 피해 지속 영역
-    Encore,         // 앙코르: 범위 아군 쿨타임 감소 + 공속 버프
+    PowerStrike, // 강타: 현재 공격 대상을 강하게 공격 (자동/근접)
+    Sweep,       // 휩쓸기: 현재 대상 방향으로 범위 공격 (자동/근접)
+    Snipe,       // 저격: 현재 대상을 강하게 원거리 공격 (자동/활)
+    Fireball,    // 화염구: 현재 대상과 주변 적에게 피해 (자동/마법 도구)
+    Execute,     // 처형: 현재 대상 HP가 낮을 때 강력한 공격 (자동/근접)
+    Heal,        // 회복: 일정 HP 이하의 아군을 회복 (자동/마법 도구)
+    BattleCry,   // 전투 함성: 주변 아군을 일정 시간 강화 (내려놓기/조건 없음)
+    Shockwave,   // 충격파: 주변 적에게 피해 + 밀쳐냄 (내려놓기/조건 없음)
+    Barrier,     // 보호막: 주변 아군에게 일정량의 보호막 부여 (내려놓기/조건 없음)
+    FirstAid,    // 응급 치료: 주변에서 가장 HP가 낮은 아군 회복 (내려놓기/조건 없음)
 }
 
-/// <summary>발동 조건 형태 (확정 규칙 — 쿨타임이 돌면 조건 충족 시 자동 발동)</summary>
-public enum SkillTrigger
+/// <summary>발동 방식 (확정 규칙)</summary>
+public enum SkillActivation
 {
-    TargetedAttack,     // 공격형: 현재 공격 대상이 스킬 사거리 안
-    SelfCenteredAttack, // 자기중심 공격형: 공격 대상이 스킬 범위 안
-    HealAlly,           // 회복형: 범위 내 HP 감소한 아군 1명 이상
-    BuffAlly,           // 버프형: 범위 내 자신 이외 아군 1명 이상
-    WhileEngaged,       // 소환형/자기강화형: 적을 공격 중이면
+    Auto,      // 쿨타임이 돌면 종류별 조건 충족 시 즉시 자동 발동
+    OnRelease, // 쿨 준비 + 무기 조건 충족 상태에서 영웅을 내려놓는 순간 발동.
+               // 쿨 중이면 그냥 재배치. 쿨이 다 차도 내려놓기 전까지 대기.
 }
 
 /// <summary>
-/// 액티브 스킬 정의 (수치 데이터). 실행 로직은 SkillRunner가 kind로 분기.
-/// 스킬 종류에 따라 사용하는 수치 항목이 다름 — 안 쓰는 항목은 0으로 둠.
+/// 액티브 스킬 정의 (액티브 스펙 v2).
+///   · 영웅 생성 시 풀에서 랜덤 1개 배정, 영구 고정 (OwnedHero.activeSkill)
+///   · 스킬 레벨/성장 없음 — 모든 수치는 고정값. 피해형은 영웅 공격력 성장으로 자연히 강해짐
+///   · 무기 조건 불충족 시 액티브만 비활성 (기본 공격은 정상)
+/// 종류별 수치 항목 사용처:
+///   강타: range, damagePercent
+///   휩쓸기: radius(전방 부채꼴 반경), damagePercent
+///   저격: range, damagePercent (투사체)
+///   화염구: range(발사 사거리), radius(폭발 반경), damagePercent
+///   처형: range, damagePercent, effectValue(대상 HP 임계 %)
+///   회복: radius, effectValue(아군 HP 임계 %), damagePercent(회복량 — 시전자 공격력 %)
+///   전투 함성: radius, duration, effectValue(공격력 +%), effectValue2(공속 +%)
+///   충격파: radius, damagePercent, effectValue(밀침 거리)
+///   보호막: radius, duration, effectValue(보호막량 — 시전자 공격력 %)
+///   응급 치료: radius, damagePercent(회복량 — 시전자 공격력 %)
 /// </summary>
 [CreateAssetMenu(menuName = "Game/Skill Definition", fileName = "Skill_")]
 public class SkillDefinition : ScriptableObject
@@ -44,24 +49,17 @@ public class SkillDefinition : ScriptableObject
 
     [Header("동작")]
     public SkillKind kind;
-    public SkillTrigger trigger;
+    public SkillActivation activation = SkillActivation.Auto;
+    public WeaponRequirement weaponRequirement = WeaponRequirement.None;
     public float cooldown = 10f;
 
-    [Header("수치 (종류별 사용 항목이 다름)")]
-    [Tooltip("공격형 사거리 / 관통 길이")]
+    [Header("수치 (종류별 사용 항목이 다름 — 클래스 주석 참고)")]
     public float range;
-    [Tooltip("자기중심·존 반경 / 관통 폭")]
     public float radius;
-    [Tooltip("버프·존 지속 시간")]
     public float duration;
-    [Tooltip("존 효과 주기")]
     public float tickInterval = 1f;
-    [Tooltip("공격력 대비 피해 %")]
+    [Tooltip("공격력 대비 피해/회복 %")]
     public float damagePercent;
-    [Tooltip("범용 효과 수치 1 — 피해감소 % / 회복 % / 밀침 거리 / 이속 감소 % 등")]
     public float effectValue;
-    [Tooltip("범용 효과 수치 2 — 기절 시간 / 공격력 증가 % / 공속 감소 % 등")]
     public float effectValue2;
-    [Tooltip("범용 효과 수치 3 — 흡혈 % 등")]
-    public float effectValue3;
 }

@@ -15,19 +15,19 @@ MonoBehaviour:
   id: luna
   displayName: "\uB8E8\uB098"
   unlockedByDefault: 1
-  heroClass: 2
-  attackType: 1
+  heroClass: 0
+  attackType: 0
   color: {r: 1, g: 0.85, b: 0.3, a: 1}
   size: 0.8
-  maxHP: 90
-  attack: 15
-  attackRange: 7
-  attackInterval: 0.8
+  maxHP: 100
+  attack: 10
+  attackRange: 0
+  attackInterval: 1
   moveSpeed: 2
-  basicAttackPercent: 90
+  basicAttackPercent: 100
   basicPoisonTotalPercent: 0
   basicPoisonDuration: 3
-  skill: {fileID: 11400000, guid: 8bda60c2ef3cf334c97835fd242b5ec0, type: 2}
+  skill: {fileID: 0}
   healPower: 0
   healRange: 0
   projectileSpeed: 9

@@ -15,19 +15,19 @@ MonoBehaviour:
   id: zet
   displayName: "\uC81C\uD2B8"
   unlockedByDefault: 1
-  heroClass: 3
-  attackType: 1
+  heroClass: 0
+  attackType: 0
   color: {r: 0.45, g: 0.75, b: 1, a: 1}
   size: 0.8
-  maxHP: 85
-  attack: 16
-  attackRange: 5
+  maxHP: 100
+  attack: 10
+  attackRange: 0
   attackInterval: 1
   moveSpeed: 1.7
-  basicAttackPercent: 95
+  basicAttackPercent: 100
   basicPoisonTotalPercent: 0
   basicPoisonDuration: 3
-  skill: {fileID: 11400000, guid: 17a42d7fb732f204e9de8d08bbfbba09, type: 2}
+  skill: {fileID: 0}
   healPower: 0
   healRange: 0
   projectileSpeed: 9

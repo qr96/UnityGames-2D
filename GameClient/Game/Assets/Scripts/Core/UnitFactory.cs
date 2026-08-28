@@ -26,9 +26,10 @@ public static class UnitFactory
         hero.Init(instance); // 장비 반영된 최종 스탯으로 초기화
         hero.radius = def.size * 0.5f; // 겹침 방지 반경 = 비주얼 반지름
 
-        // 액티브 스킬 (자동 발동)
-        if (def.skill != null)
-            go.AddComponent<SkillRunner>().Init(hero, def.skill);
+        // 액티브 스킬 (영구 영웅에 고정 배정 — 액티브 스펙 v2)
+        SkillDefinition activeSkill = instance.owned != null ? instance.owned.activeSkill : null;
+        if (activeSkill != null)
+            go.AddComponent<SkillRunner>().Init(hero, activeSkill);
 
         AddHealthBar(hero, new Color(0.3f, 1f, 0.4f));
         return hero;

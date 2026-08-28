@@ -51,6 +51,11 @@ public class DevBootstrap : MonoBehaviour
         runManager.config = config;
 
         runManager.heroDatabase = heroDatabase != null ? heroDatabase : DevGameData.CreateHeroDatabase();
+
+        // 액티브 배정 풀 (액티브 스펙 v2) — HeroRoster가 영웅을 생성하기 전에 설정해야 함
+        var skillPool = runManager.heroDatabase.skillPool;
+        HeroRoster.SetSkillPool(skillPool != null && skillPool.Count > 0 ? skillPool : DevGameData.CreateSkillPool());
+
         EquipmentDatabase equips = equipmentDatabase != null ? equipmentDatabase : DevGameData.CreateEquipmentDatabase();
         runManager.equipmentPool = new List<EquipmentDefinition>(equips.items);
         // 월드: 에셋 > 랜덤 생성 > 고정 개발 맵 순

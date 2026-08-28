@@ -15,19 +15,19 @@ MonoBehaviour:
   id: bell
   displayName: "\uBCA8"
   unlockedByDefault: 1
-  heroClass: 2
-  attackType: 1
+  heroClass: 0
+  attackType: 0
   color: {r: 0.35, g: 0.7, b: 0.55, a: 1}
   size: 0.8
-  maxHP: 85
-  attack: 18
-  attackRange: 9
-  attackInterval: 1.8
+  maxHP: 100
+  attack: 10
+  attackRange: 0
+  attackInterval: 1
   moveSpeed: 1.7
-  basicAttackPercent: 160
+  basicAttackPercent: 100
   basicPoisonTotalPercent: 0
   basicPoisonDuration: 3
-  skill: {fileID: 11400000, guid: 6b0f393080d8e984f9535e85881b8f2a, type: 2}
+  skill: {fileID: 0}
   healPower: 0
   healRange: 0
   projectileSpeed: 9

@@ -15,6 +15,8 @@ MonoBehaviour:
   id: wp14_gate
   displayName: "\uC232 \uC785\uAD6C"
   type: 4
+  nodeType: 0
+  descendTo: {fileID: 0}
   worldPosition: {x: 16, y: 112}
   north: {fileID: 0}
   south: {fileID: 0}

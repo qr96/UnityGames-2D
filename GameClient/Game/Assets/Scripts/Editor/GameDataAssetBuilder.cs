@@ -26,15 +26,12 @@ public static class GameDataAssetBuilder
         EnsureFolder($"{Root}/Equipment");
         EnsureFolder($"{Root}/World");
 
-        // ---- 영웅 + 스킬 (스킬을 먼저 에셋으로 만들어야 영웅 → 스킬 참조가 유지됨) ----
+        // ---- 영웅 + 스킬 (액티브 스펙 v2: 스킬은 영웅이 아닌 풀에 소속 — 생성 시 랜덤 배정) ----
         EnsureFolder($"{Root}/Skills");
         HeroDatabase heroDb = DevGameData.CreateHeroDatabase();
-        var savedSkills = new System.Collections.Generic.HashSet<SkillDefinition>();
-        foreach (var hero in heroDb.heroes)
-        {
-            if (hero.skill != null && savedSkills.Add(hero.skill))
-                AssetDatabase.CreateAsset(hero.skill, $"{Root}/Skills/Skill_{hero.skill.id}.asset");
-        }
+        foreach (var sk in heroDb.skillPool)
+            if (sk != null)
+                AssetDatabase.CreateAsset(sk, $"{Root}/Skills/Skill_{sk.id}.asset");
         foreach (var hero in heroDb.heroes)
             AssetDatabase.CreateAsset(hero, $"{Root}/Heroes/Hero_{hero.id}.asset");
         AssetDatabase.CreateAsset(heroDb, $"{Root}/Heroes/HeroDatabase.asset");

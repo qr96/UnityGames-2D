@@ -59,7 +59,15 @@ public abstract class Unit : MonoBehaviour
     {
         if (IsDead) return;
         if (Status != null)
+        {
             amount *= Status.Multiplier(StatusEffects.Kind.DamageTaken); // 철벽 등 피해감소
+            amount = Status.AbsorbDamage(amount); // 보호막이 먼저 흡수 (액티브 스펙 v2)
+            if (amount <= 0f)
+            {
+                Flash(new Color(0.55f, 0.75f, 1f)); // 완전 흡수 — 보호막 색 피드백
+                return;
+            }
+        }
         CurrentHP = Mathf.Max(0f, CurrentHP - amount);
         Flash(new Color(1f, 0.35f, 0.3f));
         if (IsDead) Die();

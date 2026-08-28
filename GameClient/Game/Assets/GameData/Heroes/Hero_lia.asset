@@ -15,19 +15,19 @@ MonoBehaviour:
   id: lia
   displayName: "\uB9AC\uC544"
   unlockedByDefault: 1
-  heroClass: 4
-  attackType: 1
+  heroClass: 0
+  attackType: 0
   color: {r: 0.55, g: 0.95, b: 0.65, a: 1}
   size: 0.8
-  maxHP: 110
+  maxHP: 100
   attack: 10
-  attackRange: 6
-  attackInterval: 1.2
+  attackRange: 0
+  attackInterval: 1
   moveSpeed: 1.8
-  basicAttackPercent: 80
+  basicAttackPercent: 100
   basicPoisonTotalPercent: 0
   basicPoisonDuration: 3
-  skill: {fileID: 11400000, guid: 1dd04ae64aa274943a0e8dca0c3dacdd, type: 2}
+  skill: {fileID: 0}
   healPower: 0
   healRange: 0
   projectileSpeed: 9

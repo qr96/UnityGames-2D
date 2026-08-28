@@ -34,8 +34,15 @@ public class StatusEffects : MonoBehaviour
         public float tickTimer;
     }
 
+    class Shield
+    {
+        public float remaining;
+        public float timeLeft;
+    }
+
     readonly List<Mod> mods = new List<Mod>();
     readonly List<Dot> dots = new List<Dot>();
+    readonly List<Shield> shields = new List<Shield>();
     Unit unit;
 
     void Awake()
@@ -66,6 +73,47 @@ public class StatusEffects : MonoBehaviour
             }
             if (dot.timeLeft <= 0f)
                 dots.RemoveAt(i);
+        }
+
+        // 보호막 만료
+        for (int i = shields.Count - 1; i >= 0; i--)
+        {
+            shields[i].timeLeft -= Time.deltaTime;
+            if (shields[i].timeLeft <= 0f || shields[i].remaining <= 0f)
+                shields.RemoveAt(i);
+        }
+    }
+
+    // ---------- 보호막 (액티브 스펙 v2: 보호막 스킬) ----------
+
+    /// <summary>보호막 부여 — 여러 장 중첩 가능, 각각 지속시간 만료 시 소멸.</summary>
+    public void AddShield(float amount, float duration)
+    {
+        if (amount <= 0f) return;
+        shields.Add(new Shield { remaining = amount, timeLeft = duration });
+    }
+
+    /// <summary>피해를 보호막이 먼저 흡수 (오래된 것부터 소모) — 남은 피해를 반환.</summary>
+    public float AbsorbDamage(float amount)
+    {
+        for (int i = 0; i < shields.Count && amount > 0f; i++)
+        {
+            float used = Mathf.Min(shields[i].remaining, amount);
+            shields[i].remaining -= used;
+            amount -= used;
+        }
+        shields.RemoveAll(s => s.remaining <= 0f);
+        return amount;
+    }
+
+    /// <summary>남은 보호막 총량 (HP바 표시 등)</summary>
+    public float TotalShield
+    {
+        get
+        {
+            float total = 0f;
+            foreach (var s in shields) total += s.remaining;
+            return total;
         }
     }
 

@@ -15,19 +15,19 @@ MonoBehaviour:
   id: noah
   displayName: "\uB178\uC544"
   unlockedByDefault: 1
-  heroClass: 3
-  attackType: 1
+  heroClass: 0
+  attackType: 0
   color: {r: 0.55, g: 0.8, b: 1, a: 1}
   size: 0.8
-  maxHP: 85
-  attack: 20
-  attackRange: 5.5
-  attackInterval: 1.2
+  maxHP: 100
+  attack: 10
+  attackRange: 0
+  attackInterval: 1
   moveSpeed: 1.6
-  basicAttackPercent: 80
+  basicAttackPercent: 100
   basicPoisonTotalPercent: 0
   basicPoisonDuration: 3
-  skill: {fileID: 11400000, guid: 5f927144fa6e6a14f8578ba72e8e5407, type: 2}
+  skill: {fileID: 0}
   healPower: 0
   healRange: 0
   projectileSpeed: 9

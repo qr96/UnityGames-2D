@@ -14,6 +14,9 @@ public enum StatType
     MoveSpeed,
     HealPower,
     HealRange,
+    // 영웅 스펙 v2 — 기존 에셋 직렬화 보존을 위해 반드시 뒤에만 추가할 것
+    CritChance, // 치명타 확률 % (기본치는 OwnedHero 굴림값)
+    CritDamage, // 치명타 피해 % (140 = 1.4배)
 }
 
 /// <summary>장비 하나가 주는 스탯 수정치. 최종치 = (기본 + Σflat) × (1 + Σpercent/100)</summary>

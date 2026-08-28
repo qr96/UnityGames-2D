@@ -28,12 +28,17 @@ public class Hero : Unit
 
     public void SetChanneling(bool value) => IsChanneling = value;
 
+    /// <summary>장착 무기 (스킬 무기 조건 판정용) — null = 미장착</summary>
+    public WeaponDefinition Weapon => Runtime != null ? Runtime.weapon : null;
+
     /// <summary>스킬 피해 계산용 — 버프 계수가 반영된 현재 공격력</summary>
     public float AttackPower =>
         attackPower * (Status != null ? Status.Multiplier(StatusEffects.Kind.Damage) : 1f);
 
     // 전투 시작 시 캐시되는 최종 스탯 (장비 반영)
     float attackPower;
+    float critChance;   // % (영웅 스펙 v2 — 생성 시 굴림, 레벨 성장 없음)
+    float critDamage;   // % (140 = 1.4배)
     float basicAttackPercent = 100f;
     float poisonTotalPercent;
     float poisonDuration = 3f;
@@ -41,6 +46,8 @@ public class Hero : Unit
     float attackInterval;
     float moveSpeed;
     AttackType attackType;
+    float meleeAoeRadius;   // 대검 소범위 (0 = 단일) — 무기 스펙 v2
+    bool hasWeapon;         // 무기 미장착 = 기본 공격 불가 (내려놓기 액티브는 사용 가능)
     float projectileSpeed;
     Color projectileColor;
     float wiggleSpeed = 20f;
@@ -71,6 +78,8 @@ public class Hero : Unit
         SetVitals(maxHP, Mathf.Min(carried, maxHP));
 
         attackPower = instance.GetStat(def.basicAttackPowerStat);
+        critChance = instance.GetStat(StatType.CritChance);
+        critDamage = instance.GetStat(StatType.CritDamage);
         basicAttackPercent = def.basicAttackPercent;
         attackRange = instance.GetStat(StatType.AttackRange);
         attackInterval = Mathf.Max(0.05f, instance.GetStat(StatType.AttackInterval));
@@ -78,8 +87,13 @@ public class Hero : Unit
 
         poisonTotalPercent = def.basicPoisonTotalPercent;
         poisonDuration = def.basicPoisonDuration;
-        attackType = def.attackType;
-        projectileSpeed = def.projectileSpeed;
+
+        // 무기 스펙 v2: 기본 공격 방식은 무기가 결정 (사거리/주기는 GetStat 경유로 이미 무기 기반)
+        WeaponDefinition wpn = instance.weapon;
+        hasWeapon = wpn != null;
+        attackType = wpn != null ? wpn.attackType : def.attackType;
+        meleeAoeRadius = wpn != null ? wpn.aoeRadius : 0f;
+        projectileSpeed = wpn != null ? wpn.projectileSpeed : def.projectileSpeed;
         projectileColor = def.color;
         wiggleSpeed = def.wiggleSpeed;
         wiggleAngle = def.wiggleAngle;
@@ -134,7 +148,16 @@ public class Hero : Unit
 
         actTimer -= Time.deltaTime;
 
-        // 가장 가까운 적을 공격
+        // 무기 미장착: 기본 공격 불가 — 제자리 대기 (내려놓기 액티브는 Release로 사용 가능)
+        if (!hasWeapon)
+        {
+            CurrentState = State.Idle;
+            CurrentTarget = null;
+            IsEngaged = false;
+            return;
+        }
+
+        // 가장 가까운 적을 공격 (AI 타겟팅 규칙 유지 — 영웅 스펙 v2)
         Unit enemy = UnitRegistry.GetNearest(Team.Enemy, transform.position);
         CurrentTarget = enemy;
         if (enemy == null)
@@ -170,6 +193,10 @@ public class Hero : Unit
     {
         float damage = AttackPower * basicAttackPercent / 100f;
 
+        // 치명타 (영웅 스펙 v2) — 기본 공격 피해에 적용 (스킬 치명타는 스킬 개편 시 결정)
+        if (Random.value * 100f < critChance)
+            damage *= critDamage / 100f;
+
         // 기본 공격 독 (모모): 총량을 지속시간에 분배, 비중첩 — 지속시간 갱신
         System.Action<Unit> onHit = null;
         if (poisonTotalPercent > 0f)
@@ -187,6 +214,16 @@ public class Hero : Unit
         {
             enemy.TakeDamage(damage);
             if (!enemy.IsDead) onHit?.Invoke(enemy);
+
+            // 대검 소범위 (무기 스펙 v2): 대상 주변 반경의 적에게 동일 피해 (치명타 동일 적용)
+            if (meleeAoeRadius > 0f)
+            {
+                Vector3 center = enemy.transform.position;
+                foreach (Unit u in UnitRegistry.GetAll(Team.Enemy).ToArray())
+                    if (u != enemy && !u.IsDead &&
+                        Vector2.Distance(u.transform.position, center) <= meleeAoeRadius)
+                        u.TakeDamage(damage);
+            }
 
             // 흡혈 (광폭화 등) — 근접 즉시 타격에만 적용 (투사체 흡혈은 추후)
             float lifesteal = Status != null ? Status.Sum(StatusEffects.Kind.Lifesteal) : 0f;
@@ -219,6 +256,10 @@ public class Hero : Unit
         if (visual != null) visual.localRotation = Quaternion.identity;
         landingTimer = landingDelay;
         actTimer = Mathf.Max(actTimer, landingDelay);
+
+        // 내려놓기 액티브 (액티브 스펙 v2): 쿨 준비 + 무기 조건 충족이면 내려놓는 순간 발동
+        var runner = GetComponent<SkillRunner>();
+        if (runner != null) runner.TryTriggerOnRelease();
     }
 
     void UpdateGrabbed()

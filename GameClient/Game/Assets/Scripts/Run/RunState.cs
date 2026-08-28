@@ -2,11 +2,11 @@ using System.Collections.Generic;
 
 /// <summary>
 /// 런 1회의 전체 상태. 런이 끝나면 이 객체를 버림 → 장비/파티 자연 소멸 (GDD 8: 런 종료 시 소멸).
-/// GDD 6: 시작 3명 → 영입 → 최대 5명, 벤치 없음.
+/// 탐험 규칙: 원정 시작 시 5명 선정 후 고정 (영입 시스템은 보류 중 — recruitChances=0).
 /// </summary>
 public class RunState
 {
-    public const int StartPartySize = 3;
+    public const int StartPartySize = 5;
     public const int MaxPartySize = 5;
 
     public readonly List<HeroRunInstance> party = new List<HeroRunInstance>();
@@ -37,22 +37,24 @@ public class RunState
         return inst;
     }
 
-    // ---------- 장비 규칙 (GDD 8) ----------
+    // ---------- 장비 규칙 (GDD 8 + 무기 스펙 v2) ----------
 
-    /// <summary>인벤토리 → 영웅의 빈 슬롯에 장착 (앞에서부터 채움). 전투 중에는 불가.</summary>
+    /// <summary>인벤토리 → 영웅의 빈 슬롯에 장착 (무기는 전용 무기 슬롯으로 라우팅). 전투 중에는 불가.</summary>
     public bool Equip(HeroRunInstance hero, EquipmentDefinition item)
     {
+        if (item is WeaponDefinition w) return EquipWeapon(hero, w);
         return hero != null && EquipAt(hero, item, hero.equipment.Count);
     }
 
     /// <summary>
-    /// 인벤토리 → 영웅의 특정 슬롯에 장착.
+    /// 인벤토리 → 영웅의 특정 슬롯에 장착. 무기는 자유 슬롯에 들어갈 수 없음 (전용 슬롯으로 라우팅).
     /// 점유된 슬롯이면 기존 장비를 인벤토리로 돌려보내고 교체 (드래그 스왑 탈착).
     /// </summary>
     public bool EquipAt(HeroRunInstance hero, EquipmentDefinition item, int slotIndex)
     {
         if (inBattle) return false;          // 전투 중 장비 변경 불가 (GDD 8)
         if (hero == null || item == null) return false;
+        if (item is WeaponDefinition w) return EquipWeapon(hero, w); // 무기 스펙 v2
         if (slotIndex < 0 || slotIndex >= HeroRunInstance.MaxEquipSlots) return false;
         if (!inventory.Contains(item)) return false;
 
@@ -110,6 +112,31 @@ public class RunState
         if (hero == null || slotIndex < 0 || slotIndex >= hero.equipment.Count) return false;
         inventory.Add(hero.equipment[slotIndex]);
         hero.equipment.RemoveAt(slotIndex);
+        return true;
+    }
+
+    // ---------- 무기 전용 슬롯 (무기 스펙 v2) ----------
+
+    /// <summary>인벤토리의 무기 → 전용 무기 슬롯. 점유 시 기존 무기는 인벤토리로 교체.</summary>
+    public bool EquipWeapon(HeroRunInstance hero, WeaponDefinition weapon)
+    {
+        if (inBattle) return false; // 전투 중 장비 변경 불가 (GDD 8)
+        if (hero == null || weapon == null) return false;
+        if (!inventory.Contains(weapon)) return false;
+
+        inventory.Remove(weapon);
+        if (hero.weapon != null) inventory.Add(hero.weapon);
+        hero.weapon = weapon;
+        return true;
+    }
+
+    /// <summary>무기 슬롯 → 인벤토리. 미장착 상태 허용 (기본 공격 불가 상태).</summary>
+    public bool UnequipWeapon(HeroRunInstance hero)
+    {
+        if (inBattle) return false;
+        if (hero == null || hero.weapon == null) return false;
+        inventory.Add(hero.weapon);
+        hero.weapon = null;
         return true;
     }
 }

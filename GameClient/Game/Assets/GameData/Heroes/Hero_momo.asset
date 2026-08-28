@@ -15,19 +15,19 @@ MonoBehaviour:
   id: momo
   displayName: "\uBAA8\uBAA8"
   unlockedByDefault: 1
-  heroClass: 3
-  attackType: 1
+  heroClass: 0
+  attackType: 0
   color: {r: 0.55, g: 0.85, b: 0.3, a: 1}
   size: 0.8
-  maxHP: 85
-  attack: 15
-  attackRange: 4.5
-  attackInterval: 1.3
+  maxHP: 100
+  attack: 10
+  attackRange: 0
+  attackInterval: 1
   moveSpeed: 1.6
-  basicAttackPercent: 60
-  basicPoisonTotalPercent: 60
+  basicAttackPercent: 100
+  basicPoisonTotalPercent: 0
   basicPoisonDuration: 3
-  skill: {fileID: 11400000, guid: 7b548070f21ca764facdab79d5b65785, type: 2}
+  skill: {fileID: 0}
   healPower: 0
   healRange: 0
   projectileSpeed: 9

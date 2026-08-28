@@ -15,19 +15,19 @@ MonoBehaviour:
   id: eugene
   displayName: "\uC720\uC9C4"
   unlockedByDefault: 1
-  heroClass: 2
-  attackType: 1
+  heroClass: 0
+  attackType: 0
   color: {r: 0.9, g: 0.65, b: 0.35, a: 1}
   size: 0.8
-  maxHP: 95
-  attack: 12
-  attackRange: 6.5
-  attackInterval: 0.7
+  maxHP: 100
+  attack: 10
+  attackRange: 0
+  attackInterval: 1
   moveSpeed: 1.9
-  basicAttackPercent: 75
+  basicAttackPercent: 100
   basicPoisonTotalPercent: 0
   basicPoisonDuration: 3
-  skill: {fileID: 11400000, guid: f17a4200968007c4d9361f45ca7c25fb, type: 2}
+  skill: {fileID: 0}
   healPower: 0
   healRange: 0
   projectileSpeed: 9

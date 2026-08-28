@@ -19,15 +19,15 @@ MonoBehaviour:
   attackType: 0
   color: {r: 0.4, g: 0.55, b: 0.95, a: 1}
   size: 1
-  maxHP: 220
-  attack: 14
-  attackRange: 1.2
-  attackInterval: 1.1
+  maxHP: 100
+  attack: 10
+  attackRange: 0
+  attackInterval: 1
   moveSpeed: 1.6
   basicAttackPercent: 100
   basicPoisonTotalPercent: 0
   basicPoisonDuration: 3
-  skill: {fileID: 11400000, guid: cf802294f617c084ca042e3a542e799b, type: 2}
+  skill: {fileID: 0}
   healPower: 0
   healRange: 0
   projectileSpeed: 9

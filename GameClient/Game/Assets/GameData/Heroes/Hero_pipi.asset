@@ -15,19 +15,19 @@ MonoBehaviour:
   id: pipi
   displayName: "\uD53C\uD53C"
   unlockedByDefault: 1
-  heroClass: 3
-  attackType: 1
+  heroClass: 0
+  attackType: 0
   color: {r: 1, g: 0.45, b: 0.3, a: 1}
   size: 0.8
-  maxHP: 85
-  attack: 18
-  attackRange: 5
-  attackInterval: 1.1
+  maxHP: 100
+  attack: 10
+  attackRange: 0
+  attackInterval: 1
   moveSpeed: 1.6
   basicAttackPercent: 100
   basicPoisonTotalPercent: 0
   basicPoisonDuration: 3
-  skill: {fileID: 11400000, guid: 0365266cf21a72348b7febd42bb18831, type: 2}
+  skill: {fileID: 0}
   healPower: 0
   healRange: 0
   projectileSpeed: 9

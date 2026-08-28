@@ -71,9 +71,37 @@ public class RunManager : MonoBehaviour
     {
         Run = new RunState(starters, config.recruitChances);
         Run.battleNumber = 0;
+        AssignStarterWeapons(); // ※ 임시 — 무기 획득/생성 흐름은 장비 개편에서
         World = new WorldState(world, world.defaultStartLocation); // 시작 위치는 임시 (미확정)
         battleController.ClearField(); // 이전 런의 파티 정리
         EnterExplore();
+    }
+
+    /// <summary>
+    /// ※ 임시 (장비 개편 전): 무기 획득 경로가 아직 없어 시작 시 무기를 자동 지급.
+    /// 각 영웅의 액티브 무기 조건에 맞는 무기를 우선 지급해 스킬 테스트가 가능하게 함.
+    /// 같은 영웅은 같은 무기를 받도록 id 시드 고정.
+    /// </summary>
+    void AssignStarterWeapons()
+    {
+        var weapons = new List<WeaponDefinition>();
+        foreach (var e in equipmentPool)
+            if (e is WeaponDefinition w) weapons.Add(w);
+        if (weapons.Count == 0) return;
+
+        foreach (var h in Run.party)
+        {
+            var req = h.owned != null && h.owned.activeSkill != null
+                ? h.owned.activeSkill.weaponRequirement
+                : WeaponRequirement.None;
+
+            var matching = weapons.FindAll(w => WeaponRules.Meets(w, req));
+            var pickFrom = matching.Count > 0 ? matching : weapons;
+
+            int seed = 7;
+            foreach (char c in h.definition.id) seed = seed * 31 + c;
+            h.weapon = pickFrom[Mathf.Abs(seed) % pickFrom.Count]; // 직접 지급 (인벤토리 경유 X)
+        }
     }
 
     /// <summary>임시 로비: 해금 영웅 중 앞의 3명으로 런 시작 (영웅 선택 UI는 추후)</summary>

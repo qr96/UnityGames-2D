@@ -15,8 +15,10 @@ MonoBehaviour:
   id: wp04_farmroad
   displayName: "\uB18D\uB85C"
   type: 0
+  nodeType: 0
+  descendTo: {fileID: 0}
   worldPosition: {x: -16, y: 42}
-  north: {fileID: 0}
+  north: {fileID: 11400000, guid: a7c78988b4268f94f9b8661e8d728f2f, type: 2}
   south: {fileID: 0}
   west: {fileID: 0}
   east: {fileID: 0}

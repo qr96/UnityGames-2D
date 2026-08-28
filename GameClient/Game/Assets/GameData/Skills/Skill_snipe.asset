@@ -14,14 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
   id: snipe
   displayName: "\uC800\uACA9"
-  kind: 10
-  trigger: 0
+  kind: 2
+  activation: 0
+  weaponRequirement: 2
   cooldown: 10
-  range: 12
+  range: 8
   radius: 0
-  duration: 1
+  duration: 0
   tickInterval: 1
-  damagePercent: 500
+  damagePercent: 400
   effectValue: 0
   effectValue2: 0
-  effectValue3: 0

@@ -15,19 +15,19 @@ MonoBehaviour:
   id: sian
   displayName: "\uC2DC\uC548"
   unlockedByDefault: 1
-  heroClass: 1
+  heroClass: 0
   attackType: 0
   color: {r: 0.6, g: 0.6, b: 0.72, a: 1}
   size: 0.75
-  maxHP: 120
-  attack: 12
-  attackRange: 1
-  attackInterval: 0.55
+  maxHP: 100
+  attack: 10
+  attackRange: 0
+  attackInterval: 1
   moveSpeed: 2.4
-  basicAttackPercent: 70
+  basicAttackPercent: 100
   basicPoisonTotalPercent: 0
   basicPoisonDuration: 3
-  skill: {fileID: 11400000, guid: 8c853bebab3c3af44a2146d952800ce9, type: 2}
+  skill: {fileID: 0}
   healPower: 0
   healRange: 0
   projectileSpeed: 9

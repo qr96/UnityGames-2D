@@ -15,10 +15,12 @@ MonoBehaviour:
   id: wp13_oldroad
   displayName: "\uC624\uB798\uB41C \uAE38"
   type: 0
+  nodeType: 0
+  descendTo: {fileID: 0}
   worldPosition: {x: 32, y: 98}
   north: {fileID: 0}
   south: {fileID: 0}
-  west: {fileID: 0}
+  west: {fileID: 11400000, guid: 7cfd036989c39984dbcf661890cbf455, type: 2}
   east: {fileID: 0}
   previewText: "\uC774\uB07C \uB080 \uD45C\uC9C0\uD310\uC774 \uC11C \uC788\uB2E4"
   hasBattle: 1

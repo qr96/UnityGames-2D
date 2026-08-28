@@ -13,6 +13,7 @@ public class HeroDefinition : ScriptableObject
     public bool unlockedByDefault;    // 최초 보유 영웅 여부
 
     [Header("분류")]
+    [Tooltip("※ 폐지됨 (영웅 스펙 v2: 클래스 없음) — 참조부 정리 후 필드 삭제 예정. 로직에서 사용 금지")]
     public HeroClass heroClass = HeroClass.Warrior;
     public AttackType attackType = AttackType.Melee;
 
@@ -20,7 +21,7 @@ public class HeroDefinition : ScriptableObject
     public Color color = Color.white;
     public float size = 0.9f;
 
-    [Header("공통 스탯 기본치")]
+    [Header("공통 스탯 기본치 (※ HP/공격력은 OwnedHero 굴림값이 우선 — 여기 값은 폴백)")]
     public float maxHP = 100f;
     public float attack = 10f;
     public float attackRange = 1.2f;
@@ -34,6 +35,7 @@ public class HeroDefinition : ScriptableObject
     public float basicPoisonDuration = 3f;
 
     [Header("액티브 스킬")]
+    [Tooltip("※ 폐지됨 (액티브 스펙 v2: 액티브는 영웅 생성 시 풀에서 랜덤 배정 — OwnedHero.activeSkill) — 참조부 정리 후 필드 삭제 예정")]
     public SkillDefinition skill;
 
     [Header("장비 스탯 호환용 (현재 미사용 — 유물/장비가 참조 가능)")]

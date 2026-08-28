@@ -29,3 +29,14 @@ MonoBehaviour:
   - {fileID: 11400000, guid: e1f4fc77d1837da4e999382563cdf646, type: 2}
   - {fileID: 11400000, guid: 14c9cc6012c8e974cabfc371cd6e2044, type: 2}
   - {fileID: 11400000, guid: 9310f31ede246154d98e74ed08b60418, type: 2}
+  skillPool:
+  - {fileID: 11400000, guid: 92f7b9a16720ab24599bcb7545c756d4, type: 2}
+  - {fileID: 11400000, guid: f460b4f4be7ffa2408bba4104d57766c, type: 2}
+  - {fileID: 11400000, guid: 6b0f393080d8e984f9535e85881b8f2a, type: 2}
+  - {fileID: 11400000, guid: 60c1f8bbb295c8b408e74c00e7aaf7e7, type: 2}
+  - {fileID: 11400000, guid: bf6b0edfd05fdc84eb4cee29ca466448, type: 2}
+  - {fileID: 11400000, guid: 717d5f23ee944e5468d24a336ebcc80a, type: 2}
+  - {fileID: 11400000, guid: d318021e929860e4a8eaa2a1319c5f05, type: 2}
+  - {fileID: 11400000, guid: 87930bafabf961d458438585b2edd700, type: 2}
+  - {fileID: 11400000, guid: f72c075b5ebe89d4984e188623e9444d, type: 2}
+  - {fileID: 11400000, guid: d5f98d1839445e743af9d065b8e2fa87, type: 2}

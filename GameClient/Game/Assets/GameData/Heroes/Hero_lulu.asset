@@ -15,19 +15,19 @@ MonoBehaviour:
   id: lulu
   displayName: "\uB8E8\uB8E8"
   unlockedByDefault: 1
-  heroClass: 4
-  attackType: 1
+  heroClass: 0
+  attackType: 0
   color: {r: 1, g: 0.7, b: 0.85, a: 1}
   size: 0.8
   maxHP: 100
-  attack: 9
-  attackRange: 4.5
+  attack: 10
+  attackRange: 0
   attackInterval: 1
   moveSpeed: 1.8
-  basicAttackPercent: 75
+  basicAttackPercent: 100
   basicPoisonTotalPercent: 0
   basicPoisonDuration: 3
-  skill: {fileID: 11400000, guid: 012f8264b54375941a66b95f20e1b48c, type: 2}
+  skill: {fileID: 0}
   healPower: 0
   healRange: 0
   projectileSpeed: 9

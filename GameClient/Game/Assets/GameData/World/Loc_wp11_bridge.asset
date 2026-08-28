@@ -15,10 +15,12 @@ MonoBehaviour:
   id: wp11_bridge
   displayName: "\uC791\uC740 \uB3CC\uB2E4\uB9AC"
   type: 0
+  nodeType: 0
+  descendTo: {fileID: 0}
   worldPosition: {x: 32, y: 84}
-  north: {fileID: 0}
+  north: {fileID: 11400000, guid: b832dfad57012244ba0a8de3c64422cc, type: 2}
   south: {fileID: 0}
-  west: {fileID: 0}
+  west: {fileID: 11400000, guid: 46002c17d78c81e408ecf197b9b65b21, type: 2}
   east: {fileID: 0}
   previewText: "\uB2E4\uB9AC \uBC11\uC774 \uC218\uC0C1\uD558\uB2E4"
   hasBattle: 1
