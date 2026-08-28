@@ -144,6 +144,74 @@ public static class LobbySceneBuilder
         Debug.Log("[LobbySceneBuilder] 영웅 관리 UI 생성 완료.");
     }
 
+    [MenuItem("Tools/GrabProto/로비 목록 스크롤 적용")]
+    public static void AddListScrolls()
+    {
+        int applied = 0;
+
+        var manage = Object.FindFirstObjectByType<HeroManagePanel>(FindObjectsInactive.Include);
+        if (manage != null && manage.listRoot != null && RetrofitScroll((RectTransform)manage.listRoot))
+            applied++;
+
+        var sortie = Object.FindFirstObjectByType<SortiePanel>(FindObjectsInactive.Include);
+        if (sortie != null && sortie.listRoot != null && RetrofitScroll((RectTransform)sortie.listRoot))
+            applied++;
+
+        if (applied > 0)
+        {
+            EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+            Debug.Log($"[LobbySceneBuilder] 목록 스크롤 적용 완료 ({applied}개 패널).");
+        }
+        else
+        {
+            EditorUtility.DisplayDialog("목록 스크롤",
+                "적용할 목록이 없습니다 (패널 없음 또는 이미 적용됨).", "확인");
+        }
+    }
+
+    /// <summary>
+    /// 기존 목록(ListRoot)에 스크롤 구조를 씌움:
+    /// ListRoot 자리에 ListScroll(ScrollRect + RectMask2D)을 만들고
+    /// ListRoot를 그 안의 콘텐츠로 옮김 (자동 높이). 기존 항목/배치는 보존.
+    /// </summary>
+    static bool RetrofitScroll(RectTransform listRoot)
+    {
+        if (listRoot.GetComponentInParent<ScrollRect>(true) != null) return false; // 이미 적용됨
+
+        // 스크롤 컨테이너 — ListRoot의 기존 자리/크기를 그대로 차지
+        var scrollGO = new GameObject("ListScroll",
+            typeof(RectTransform), typeof(RectMask2D), typeof(ScrollRect));
+        var scrollRT = scrollGO.GetComponent<RectTransform>();
+        scrollGO.transform.SetParent(listRoot.parent, false);
+        scrollGO.transform.SetSiblingIndex(listRoot.GetSiblingIndex());
+        scrollRT.anchorMin = listRoot.anchorMin;
+        scrollRT.anchorMax = listRoot.anchorMax;
+        scrollRT.pivot = listRoot.pivot;
+        scrollRT.anchoredPosition = listRoot.anchoredPosition;
+        scrollRT.sizeDelta = listRoot.sizeDelta;
+
+        // ListRoot → 콘텐츠로: 위쪽 고정 + 가로 스트레치 + 높이는 내용에 맞게 자동
+        listRoot.SetParent(scrollGO.transform, false);
+        listRoot.anchorMin = new Vector2(0f, 1f);
+        listRoot.anchorMax = new Vector2(1f, 1f);
+        listRoot.pivot = new Vector2(0.5f, 1f);
+        listRoot.anchoredPosition = Vector2.zero;
+        listRoot.sizeDelta = Vector2.zero;
+        var fitter = listRoot.gameObject.AddComponent<ContentSizeFitter>();
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        var scroll = scrollGO.GetComponent<ScrollRect>();
+        scroll.content = listRoot;
+        scroll.viewport = scrollRT;
+        scroll.horizontal = false;
+        scroll.vertical = true;
+        scroll.movementType = ScrollRect.MovementType.Clamped;
+        scroll.scrollSensitivity = 20f;
+
+        EditorUtility.SetDirty(scrollGO);
+        return true;
+    }
+
     [MenuItem("Tools/GrabProto/로비 출정 UI 생성")]
     public static void BuildSortieUI()
     {
@@ -245,6 +313,7 @@ public static class LobbySceneBuilder
         panel.countText = count;
         panel.departButton = depart;
         hud.sortiePanel = panel;
+        RetrofitScroll(lrt); // 목록 스크롤 (16인 로스터 대응)
         panelGO.SetActive(false);
 
         EditorUtility.SetDirty(panel);
@@ -318,6 +387,7 @@ public static class LobbySceneBuilder
         panel.entryTemplate = entry.gameObject;
         panel.detailText = detail;
         hud.heroManagePanel = panel;
+        RetrofitScroll(lrt); // 목록 스크롤 (16인 로스터 대응)
         panelGO.SetActive(false);
 
         EditorUtility.SetDirty(panel);

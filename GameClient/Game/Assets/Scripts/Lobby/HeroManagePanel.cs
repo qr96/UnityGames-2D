@@ -33,6 +33,10 @@ public class HeroManagePanel : MonoBehaviour
         RebuildList();
         if (detailText != null)
             detailText.text = "영웅을 선택하세요.";
+
+        // 스크롤이 적용되어 있으면 열 때 맨 위로
+        var scroll = listRoot != null ? listRoot.GetComponentInParent<ScrollRect>(true) : null;
+        if (scroll != null) scroll.verticalNormalizedPosition = 1f;
     }
 
     public void Close()
