@@ -510,6 +510,67 @@ public static class GameUIBuilder
         EditorUtility.SetDirty(hud);
     }
 
+
+    [MenuItem("Tools/GrabProto/계단 UI 생성")]
+    public static void BuildStairsUI()
+    {
+        font = LoadFont();
+
+        Canvas canvas = Object.FindFirstObjectByType<Canvas>();
+        GameHUD hud = canvas != null ? canvas.GetComponent<GameHUD>() : null;
+        if (canvas == null || hud == null)
+        {
+            EditorUtility.DisplayDialog("계단 UI", "Canvas/GameHUD가 없습니다. 먼저 [게임 UI 생성]을 실행하세요.", "확인");
+            return;
+        }
+        if (canvas.transform.Find("StairsPanel") != null)
+        {
+            EditorUtility.DisplayDialog("계단 UI", "이미 StairsPanel이 있습니다. 다시 만들려면 기존 것을 삭제한 뒤 실행하세요.", "확인");
+            return;
+        }
+
+        BuildStairsUIInternal(canvas, hud);
+        EditorUtility.SetDirty(hud);
+        EditorSceneManager.MarkSceneDirty(canvas.gameObject.scene);
+        Debug.Log("[GameUIBuilder] 계단 UI 생성 완료.");
+    }
+
+    /// <summary>
+    /// 계단 [내려가기]/[귀환] 버튼 생성 및 연결 (탐험 규칙 — 계단 발견 시 선택).
+    /// Explore 중 방향 선택 패널과 함께 표시되므로, 남쪽 방향 슬롯(하단 y≈220)과
+    /// 겹치지 않게 그 위(y=420)에 배치. 표시/숨김은 GameHUD가 IsAtStairs로 토글.
+    /// </summary>
+    static void BuildStairsUIInternal(Canvas canvas, GameHUD hud)
+    {
+        UpdateUiScale(canvas);
+
+        var panelGO = new GameObject("StairsPanel", typeof(RectTransform));
+        panelGO.transform.SetParent(canvas.transform, false);
+        var prt = panelGO.GetComponent<RectTransform>();
+        prt.anchorMin = prt.anchorMax = new Vector2(0.5f, 0f);
+        prt.anchoredPosition = new Vector2(0f, S(420f));
+        prt.sizeDelta = new Vector2(S(900f), S(140f));
+
+        Button descend = MakeButton(panelGO.transform, "DescendButton", "내려가기 ▼", new Color(0.22f, 0.62f, 0.40f), 36);
+        var drt = descend.GetComponent<RectTransform>();
+        drt.anchorMin = drt.anchorMax = new Vector2(0.5f, 0.5f);
+        drt.anchoredPosition = new Vector2(-S(200f), 0f);
+        drt.sizeDelta = new Vector2(S(340f), S(120f));
+        WireButton(descend, hud, nameof(GameHUD.OnClickDescendStairs));
+
+        Button ret = MakeButton(panelGO.transform, "ReturnButton", "귀환", new Color(0.30f, 0.45f, 0.85f), 36);
+        var rrt2 = ret.GetComponent<RectTransform>();
+        rrt2.anchorMin = rrt2.anchorMax = new Vector2(0.5f, 0.5f);
+        rrt2.anchoredPosition = new Vector2(S(200f), 0f);
+        rrt2.sizeDelta = new Vector2(S(340f), S(120f));
+        WireButton(ret, hud, nameof(GameHUD.OnClickReturnFromStairs));
+
+        hud.stairsPanel = panelGO;
+        hud.descendButton = descend.gameObject;
+        panelGO.SetActive(false);
+        EditorUtility.SetDirty(hud);
+    }
+
     // ================= 생성 헬퍼 =================
 
     /// <summary>슬롯 프레임 + Icon(Image) + Label(Text) 구조 생성</summary>

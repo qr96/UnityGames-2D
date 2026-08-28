@@ -3,18 +3,24 @@ using UnityEngine;
 
 /// <summary>
 /// 장소(Location) 정의 — 월드의 실제 이동 단위.
-/// 개편된 규칙: 출구는 상/하/좌/우 방향 슬롯 (일방통행 — 지나간 장소로는 돌아갈 수 없음).
+/// 개편된 규칙(랜덤 맵): 출구는 상/하/좌/우 방향 슬롯이며 양방향 —
+/// 생성기가 양쪽 노드에 서로를 향한 출구를 모두 설정하므로 지나간 노드로 되돌아갈 수 있음.
 /// 미리보기 텍스트는 탐험 화면에서 다음 장소의 이름과 함께 표기됨 (데이터 분리).
-/// 위치·출구·이름은 세계에 고정된 요소.
 /// </summary>
 [CreateAssetMenu(menuName = "Game/World/Location", fileName = "Loc_")]
 public class LocationDefinition : ScriptableObject
 {
     [Header("신원")]
-    public string id;             // 저장/조회용 고유 키 (예: "windplain_forest_1")
+    public string id;             // 저장/조회용 고유 키 (예: "f0_x2y0")
     [Tooltip("일반 장소는 보편 명칭(숲, 폐허...), 주요 장소만 고유 지명(로엔 마을...)")]
     public string displayName;
     public LocationType type = LocationType.Field;
+
+    [Header("노드 콘텐츠 (랜덤 맵 — 노드 규칙)")]
+    public NodeContent nodeType = NodeContent.None;
+
+    [Tooltip("계단 전용 — '내려가기' 선택 시 이동할 다음 층 시작 노드 (null = 마지막 층)")]
+    public LocationDefinition descendTo;
 
     [Header("월드 배치 (세계 고정 요소 — 지형/이동 연출/지도 표기 기준)")]
     public Vector2 worldPosition;

@@ -22,4 +22,19 @@ public enum LocationFunction
     RunStart, // 런 시작 지점 (정보용 — 실제 시작은 WorldDefinition.defaultStartLocation)
     Rest,     // 휴식: 생존자 완전 회복 (예배당/야영지)
     Shop,     // 상점 (시스템 추후)
+    Stairs,   // 내려가는 계단 — 도착 시 [귀환 / 내려가기] 선택 (내려가기 = descendTo로 이동)
+}
+
+/// <summary>
+/// 랜덤 맵 노드의 콘텐츠 종류 (노드 규칙).
+/// 정보 노출: 전투 클리어 시 인접 노드의 이 값이 노출됨 (런타임 판정은 MapRunState).
+/// </summary>
+public enum NodeContent
+{
+    None,         // 시작 지점 등 콘텐츠 없음
+    NormalBattle, // 일반 전투
+    EliteBattle,  // 엘리트 전투 (적 티어 판정은 이 값 기준)
+    Treasure,     // 보물
+    Stairs,       // 내려가는 계단
+    Special,      // 특수방 (시스템 추후 — 생성기에서 배치만 지원)
 }

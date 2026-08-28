@@ -75,10 +75,11 @@ public static class GameDataAssetBuilder
             bootstrap.heroDatabase = heroDb;
             bootstrap.equipmentDatabase = equipDb;
             bootstrap.runConfig = config;
-            bootstrap.worldDefinition = world;
+            // ※ worldDefinition은 연결하지 않음 — 연결하면 랜덤 맵(useRandomMap)이 무시됨.
+            //    고정 맵으로 테스트하려면 인스펙터에서 World.asset을 직접 연결할 것.
             EditorUtility.SetDirty(bootstrap);
             UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(bootstrap.gameObject.scene);
-            Debug.Log("[GameDataAssetBuilder] 부트스트랩 필드 자동 연결 완료 (씬 저장 필요)");
+            Debug.Log("[GameDataAssetBuilder] 부트스트랩 필드 자동 연결 완료 — worldDefinition은 랜덤 맵 사용을 위해 비워둠 (씬 저장 필요)");
         }
 
         Debug.Log("[GameDataAssetBuilder] Assets/GameData 생성 완료");

@@ -19,16 +19,20 @@ public enum RunPhase
 /// <summary>
 /// 런의 페이즈 머신. 월드 탐험과 전투(BattleController), UI 사이의 유일한 흐름 창구.
 ///
-/// 흐름 (월드 통합):
-///   StartRun(시작 3명) → 시작 장소에서 Explore
+/// 흐름 (랜덤 맵 통합):
+///   StartRun(시작 파티) → 시작 장소에서 Explore
 ///   → 인접 장소 탭(TravelTo) → 도착
-///      · 전투 장소  → Placement(그 장소 좌표 위 전투장) → Battle
-///      · 그 외 장소 → 콘텐츠 스텁 → 다시 Explore
+///      · 전투 필요(WorldState.ShouldBattle) → Placement → Battle
+///      · 보물(미회수)   → Loot 팝업
+///      · 휴식 장소      → Camp
+///      · 계단           → Explore 유지 + IsAtStairs=true (HUD가 [귀환]/[내려가기] 버튼 표시)
 ///   → 전투 승리 → Loot → 확인 → Explore ...
-///   → 랜드마크 전투 승리 = RunClear (확정: 랜드마크 클리어 = 런 클리어)
+///   → 랜드마크 전투 승리 = RunClear (고정 맵 호환)
+///   → 계단에서 귀환 = RunClear (임시 정책 — 전리품/해금 유지하고 런 종료)
 ///   → 전멸 시 RunFailed (RunState 폐기 = 장비/파티 소멸)
 ///
-/// 일방통행 규칙: 방문한 장소로는 돌아갈 수 없음 — 도착지는 항상 첫 방문
+/// 양방향 규칙: 지나간 장소로 되돌아갈 수 있음. 클리어한 장소는 재전투 없음
+/// (특정 이벤트가 WorldState.ReArmBattle로 다시 걸 수 있음).
 /// </summary>
 public class RunManager : MonoBehaviour
 {
@@ -90,7 +94,7 @@ public class RunManager : MonoBehaviour
         SetPhase(RunPhase.Explore);
     }
 
-    /// <summary>방향 선택 UI가 호출 — 해당 방향의 미방문 출구로 이동 (일방통행)</summary>
+    /// <summary>방향 선택 UI가 호출 — 해당 방향 출구로 이동 (양방향 — 재방문 가능)</summary>
     public void TravelInDirection(Direction dir)
     {
         if (Phase != RunPhase.Explore) return;
@@ -99,7 +103,8 @@ public class RunManager : MonoBehaviour
 
         TravelDestination = destination;
         SetPhase(RunPhase.Travel);
-        travelController.BeginTravel(Run, World.Current, destination, destinationVisited: false);
+        travelController.BeginTravel(Run, World.Current, destination,
+            destinationVisited: World.IsVisited(destination));
     }
 
     /// <summary>이동 연출 완료 시 TravelController가 호출</summary>
@@ -123,16 +128,54 @@ public class RunManager : MonoBehaviour
             return;
         }
 
-        // 일방통행: 도착지는 항상 첫 방문 — 전투 장소면 그대로 전투
-        if (loc.hasBattle)
+        // 전투 판정: 클리어한 장소는 재전투 없음 (이벤트로 재장전된 경우만 예외)
+        if (World.ShouldBattle(loc))
         {
             EnterPlacement();
+            return;
         }
-        else
+
+        // 보물 (미회수): 기존 전리품 팝업 재사용 — 확인 시 Explore 복귀
+        if (World.CanLoot(loc))
         {
-            // 야영지/마을/클리어된 장소 — 장소 콘텐츠(회복, 상점 등)는 스텁 상태
-            EnterExplore();
+            World.MarkLooted(loc);
+            GrantEquipmentDrops();
+            SetPhase(RunPhase.Loot);
+            return;
         }
+
+        // 계단 포함 그 외: Explore — 계단이면 IsAtStairs=true (HUD가 귀환/내려가기 버튼 표시)
+        EnterExplore();
+    }
+
+    // ---------- 계단 (탐험 규칙: 발견 시 귀환 혹은 내려가기 선택 가능) ----------
+    // 별도 페이즈를 만들지 않고 Explore에서 선택 — HUD 미지원 상태에서도 이동이 막히지 않음.
+    // HUD 연동: Explore 중 IsAtStairs면 [내려가기](CanDescend일 때)/[귀환] 버튼 표시.
+
+    /// <summary>현재 계단 위에 서 있는가 (Explore 중에만 유효).</summary>
+    public bool IsAtStairs =>
+        Phase == RunPhase.Explore &&
+        World != null && World.Current != null &&
+        World.Current.fixedFunction == LocationFunction.Stairs;
+
+    /// <summary>내려갈 수 있는가 (마지막 층 계단은 descendTo가 없음).</summary>
+    public bool CanDescend => IsAtStairs && World.Current.descendTo != null;
+
+    /// <summary>[내려가기] — 다음 층 시작 장소로 이동 (이동 연출 재사용).</summary>
+    public void DescendStairs()
+    {
+        if (!CanDescend) return;
+        TravelDestination = World.Current.descendTo;
+        SetPhase(RunPhase.Travel);
+        travelController.BeginTravel(Run, World.Current, TravelDestination,
+            destinationVisited: World.IsVisited(TravelDestination));
+    }
+
+    /// <summary>[귀환] — 획득물을 유지하고 런 종료. ※ 임시 정책: 귀환 = 런 클리어 처리.</summary>
+    public void ReturnFromStairs()
+    {
+        if (!IsAtStairs) return;
+        FinishRunClear();
     }
 
     // ---------- 야영지 ----------

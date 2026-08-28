@@ -26,6 +26,10 @@ public class GameHUD : MonoBehaviour
     public GameObject mapButton;                        // 지도 열기 버튼
     public MapPanel mapPanel;                           // 지도 팝업
 
+    [Header("계단 화면 (Explore 중 계단 위에서만 표시)")]
+    public GameObject stairsPanel;   // [귀환]/[내려가기] 버튼 묶음
+    public GameObject descendButton; // 내려가기 — 마지막 층 계단에서는 숨김 (CanDescend)
+
     [Header("전투 준비 화면")]
     public GameObject startButton;
     public GameObject inventoryButton;
@@ -74,6 +78,12 @@ public class GameHUD : MonoBehaviour
         SetActive(exploreDirectionPanel != null ? exploreDirectionPanel.gameObject : null, phase == RunPhase.Explore);
         SetActive(mapButton, phase == RunPhase.Explore);
         if (phase != RunPhase.Explore && mapPanel != null) mapPanel.Close();
+
+        // 계단: Explore 중 계단 위에 있을 때만 표시 (탐험 규칙 — 귀환/내려가기 선택)
+        RunManager rmForStairs = RunManager.Instance;
+        bool atStairs = phase == RunPhase.Explore && rmForStairs != null && rmForStairs.IsAtStairs;
+        SetActive(stairsPanel, atStairs);
+        SetActive(descendButton, atStairs && rmForStairs.CanDescend);
         SetActive(campPanel, phase == RunPhase.Camp);
         SetActive(lootPanel, phase == RunPhase.Loot);
         SetActive(resultPanel, phase == RunPhase.RunClear || phase == RunPhase.RunFailed);
@@ -102,12 +112,15 @@ public class GameHUD : MonoBehaviour
                     var region = rm.World.world.GetRegionOf(loc);
                     if (region != null) regionName = region.regionName + " · ";
                 }
-                SetLabel($"{regionName}어디로 갈까요?");
+                SetLabel(rm.IsAtStairs
+                    ? $"{regionName}{locName} — 귀환하거나 더 내려갈 수 있습니다"
+                    : $"{regionName}어디로 갈까요?");
                 if (exploreDirectionPanel != null) exploreDirectionPanel.Refresh();
                 break;
 
             case RunPhase.Travel:
-                string dest = rm.TravelDestination != null ? rm.TravelDestination.displayName : "";
+                // 정보 미노출 장소로 이동 중이면 이름을 가림 (노드 규칙 — 전투 클리어 시 인접 노출)
+                string dest = MaskedName(rm, rm.TravelDestination);
                 SetLabel($"이동 중 — {dest}(으)로 향하는 길");
                 break;
 
@@ -136,7 +149,7 @@ public class GameHUD : MonoBehaviour
                 break;
 
             case RunPhase.RunClear:
-                SetLabel("런 클리어! — 거인의 무덤 정복");
+                SetLabel("런 클리어! — 전리품을 가지고 귀환합니다");
                 if (resultText != null) resultText.text = BuildClearText(rm);
                 break;
 
@@ -190,6 +203,16 @@ public class GameHUD : MonoBehaviour
     public void OnClickLeaveCamp() => RunManager.Instance.LeaveCamp();
     public void OnClickOpenMap() { if (mapPanel != null) mapPanel.Open(); }
     public void OnClickCloseMap() { if (mapPanel != null) mapPanel.Close(); }
+    public void OnClickDescendStairs() => RunManager.Instance.DescendStairs();
+    public void OnClickReturnFromStairs() => RunManager.Instance.ReturnFromStairs();
+
+    /// <summary>정보 미노출 장소 이름 가림 — 방향/지도 패널에서도 이 헬퍼 사용 권장.</summary>
+    public static string MaskedName(RunManager rm, LocationDefinition loc)
+    {
+        if (loc == null) return "";
+        bool known = rm != null && rm.World != null && rm.World.IsRevealed(loc);
+        return known ? loc.displayName : "???";
+    }
 
     // ---------- 텍스트 빌더 ----------
 

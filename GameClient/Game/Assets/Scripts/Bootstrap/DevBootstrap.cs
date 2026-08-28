@@ -22,6 +22,14 @@ public class DevBootstrap : MonoBehaviour
     public RunConfig runConfig;
     public WorldDefinition worldDefinition;
 
+    [Header("랜덤 맵 — worldDefinition이 비어 있을 때 사용")]
+    [Tooltip("끄면 기존 고정 맵(DevWorldData)으로 폴백")]
+    public bool useRandomMap = true;
+    [Tooltip("0 = 매 실행 랜덤. 그 외 = 시드 고정 (같은 시드 = 같은 맵, 버그 재현용)")]
+    public int mapSeed = 0;
+    public int floorCount = 3;
+    public MapGenerator.Config mapConfig = new MapGenerator.Config();
+
     RunManager runManager;
     BattleController battleController;
 
@@ -45,7 +53,21 @@ public class DevBootstrap : MonoBehaviour
         runManager.heroDatabase = heroDatabase != null ? heroDatabase : DevGameData.CreateHeroDatabase();
         EquipmentDatabase equips = equipmentDatabase != null ? equipmentDatabase : DevGameData.CreateEquipmentDatabase();
         runManager.equipmentPool = new List<EquipmentDefinition>(equips.items);
-        runManager.world = worldDefinition != null ? worldDefinition : DevWorldData.Create();
+        // 월드: 에셋 > 랜덤 생성 > 고정 개발 맵 순
+        if (worldDefinition != null)
+        {
+            runManager.world = worldDefinition;
+        }
+        else if (useRandomMap)
+        {
+            int seed = mapSeed != 0 ? mapSeed : Random.Range(1, int.MaxValue);
+            Debug.Log($"[DevBootstrap] 랜덤 맵 생성 — seed={seed}, floors={floorCount}");
+            runManager.world = MapGenerator.GenerateWorld(seed, floorCount, mapConfig);
+        }
+        else
+        {
+            runManager.world = DevWorldData.Create();
+        }
         runManager.battleController = battleController;
         runManager.travelController = new GameObject("TravelController").AddComponent<TravelController>();
 

@@ -23,6 +23,10 @@ public class BattleController : MonoBehaviour
 
     readonly List<GameObject> spawned = new List<GameObject>();
 
+    // 엘리트 전투 임시 수치 — TODO: RunConfig 필드로 이동
+    const float EliteStatMultiplier = 1.5f;
+    const int EliteExtraEnemies = 2;
+
     RunConfig config;
     Vector3 arenaCenter;              // 전투장 중심 = 현재 장소의 월드 좌표
     LocationDefinition fieldLocation; // 현재 전장/파티가 서 있는 장소
@@ -56,6 +60,12 @@ public class BattleController : MonoBehaviour
         statMultiplier = 1f + battleIdx * config.enemyStatGrowth;
         if (location != null && location.type == LocationType.Landmark)
             statMultiplier *= config.landmarkStatMultiplier; // 보스 지역 강화
+        if (location != null && location.nodeType == NodeContent.EliteBattle)
+        {
+            // 엘리트 전투 (노드 규칙) — TODO: 수치는 RunConfig로 이동 (파일 확보 후)
+            remainingToSpawn += EliteExtraEnemies;
+            statMultiplier *= EliteStatMultiplier;
+        }
 
         // GDD 4: 포션은 전투당 N개 지급 (소모품 바에 오른쪽부터 표시)
         if (consumableBar != null) consumableBar.SetPotions(config.potionsPerBattle);
