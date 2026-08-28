@@ -110,11 +110,22 @@ public static class LobbySceneBuilder
         sortRT.sizeDelta = new Vector2(420f, 130f);
         Wire(sortie, hud, nameof(LobbyHUD.OnClickSortie));
 
+        // 영입 (하단 중앙 위 — 영입 스펙 v1)
+        Button recruitBtn = MakeButton(root, "RecruitButton", "영입", new Color(0.55f, 0.40f, 0.20f), 34);
+        var rbrt = recruitBtn.GetComponent<RectTransform>();
+        rbrt.anchorMin = rbrt.anchorMax = new Vector2(0.5f, 0f);
+        rbrt.anchoredPosition = new Vector2(0f, 270f);
+        rbrt.sizeDelta = new Vector2(320f, 110f);
+        Wire(recruitBtn, hud, nameof(LobbyHUD.OnClickRecruit));
+
         // ---- 영웅 관리 패널 ----
         BuildHeroManageUIInternal(canvas, hud);
 
         // ---- 출정 패널 ----
         BuildSortieUIInternal(canvas, hud);
+
+        // ---- 영입 패널 ----
+        BuildRecruitUIInternal(canvas, hud);
 
         EditorSceneManager.MarkSceneDirty(lobbyGO.scene);
         Debug.Log("[LobbySceneBuilder] 로비 씬 구성 완료. 배치/색은 에디터에서 자유롭게 수정하세요.");
@@ -236,6 +247,158 @@ public static class LobbySceneBuilder
         Debug.Log("[LobbySceneBuilder] 출정 UI 생성 완료.");
     }
 
+    [MenuItem("Tools/GrabProto/로비 영입 UI 생성")]
+    public static void BuildRecruitUI()
+    {
+        font = LoadFont();
+
+        Canvas canvas = Object.FindFirstObjectByType<Canvas>();
+        LobbyHUD hud = canvas != null ? canvas.GetComponent<LobbyHUD>() : null;
+        if (canvas == null || hud == null)
+        {
+            EditorUtility.DisplayDialog("영입 UI", "Canvas/LobbyHUD가 없습니다. 먼저 [로비 씬 구성]을 실행하세요.", "확인");
+            return;
+        }
+        if (canvas.transform.Find("RecruitPanel") != null)
+        {
+            EditorUtility.DisplayDialog("영입 UI", "이미 RecruitPanel이 있습니다. 다시 만들려면 기존 것을 삭제한 뒤 실행하세요.", "확인");
+            return;
+        }
+
+        UpdateUiScale(canvas);
+
+        // HUD 영입 버튼 (기존 씬 패치 — 없으면 생성)
+        if (canvas.transform.Find("RecruitButton") == null)
+        {
+            Button recruitBtn = MakeButton(canvas.transform, "RecruitButton", "영입", new Color(0.55f, 0.40f, 0.20f), S(34f));
+            var rbrt = recruitBtn.GetComponent<RectTransform>();
+            rbrt.anchorMin = rbrt.anchorMax = new Vector2(0.5f, 0f);
+            rbrt.anchoredPosition = new Vector2(0f, S(270f));
+            rbrt.sizeDelta = new Vector2(S(320f), S(110f));
+            Wire(recruitBtn, hud, nameof(LobbyHUD.OnClickRecruit));
+        }
+
+        BuildRecruitUIInternal(canvas, hud);
+        PatchDismissButton(canvas); // 기존 영웅 관리 패널에 [해고] 버튼 주입
+
+        EditorUtility.SetDirty(hud);
+        EditorSceneManager.MarkSceneDirty(canvas.gameObject.scene);
+        Debug.Log("[LobbySceneBuilder] 영입 UI 생성 완료 (+ 영웅 관리 패널에 해고 버튼 적용).");
+    }
+
+    /// <summary>영입 상점 패널 — 후보 3칸 (정보 전부 공개 + 영입 버튼) + 골드 표시</summary>
+    static void BuildRecruitUIInternal(Canvas canvas, LobbyHUD hud)
+    {
+        UpdateUiScale(canvas);
+
+        var panelGO = new GameObject("RecruitPanel", typeof(Image));
+        panelGO.transform.SetParent(canvas.transform, false);
+        var panelImg = panelGO.GetComponent<Image>();
+        panelImg.color = new Color(0.06f, 0.07f, 0.10f, 0.97f);
+        panelImg.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+        panelImg.type = Image.Type.Sliced;
+        var prt = panelGO.GetComponent<RectTransform>();
+        prt.anchorMin = prt.anchorMax = new Vector2(0.5f, 0.5f);
+        prt.sizeDelta = new Vector2(S(1020f), S(1500f));
+
+        var panel = panelGO.AddComponent<RecruitPanel>();
+        panel.lobby = Object.FindFirstObjectByType<LobbyController>();
+
+        // 제목 / 닫기 / 골드
+        Text title = MakeText(panelGO.transform, "영입 — 떠돌이 용병", S(42f));
+        var trt = title.rectTransform;
+        trt.anchorMin = trt.anchorMax = new Vector2(0.5f, 1f);
+        trt.anchoredPosition = new Vector2(0f, -S(70f));
+        trt.sizeDelta = new Vector2(S(800f), S(80f));
+
+        Button close = MakeButton(panelGO.transform, "CloseButton", "✕", new Color(0.55f, 0.22f, 0.25f), S(34f));
+        var crt = close.GetComponent<RectTransform>();
+        crt.anchorMin = crt.anchorMax = new Vector2(1f, 1f);
+        crt.pivot = new Vector2(1f, 1f);
+        crt.anchoredPosition = new Vector2(-S(16f), -S(16f));
+        crt.sizeDelta = new Vector2(S(76f), S(76f));
+        Wire(close, panel, nameof(RecruitPanel.Close));
+
+        Text gold = MakeText(panelGO.transform, "골드  0", S(32f));
+        var grt = gold.rectTransform;
+        grt.anchorMin = grt.anchorMax = new Vector2(0.5f, 1f);
+        grt.anchoredPosition = new Vector2(0f, -S(140f));
+        grt.sizeDelta = new Vector2(S(900f), S(60f));
+        panel.goldText = gold;
+
+        // 후보 카드 3칸 (가로 배치)
+        string[] recruitHandlers =
+        {
+            nameof(RecruitPanel.OnClickRecruit0),
+            nameof(RecruitPanel.OnClickRecruit1),
+            nameof(RecruitPanel.OnClickRecruit2),
+        };
+        const float cardW = 310f, cardH = 1080f, gap = 24f;
+        float totalW = 3 * cardW + 2 * gap;
+
+        for (int i = 0; i < 3; i++)
+        {
+            var cardGO = new GameObject($"Candidate{i}", typeof(Image));
+            cardGO.transform.SetParent(panelGO.transform, false);
+            var cardImg = cardGO.GetComponent<Image>();
+            cardImg.color = new Color(0.11f, 0.13f, 0.19f, 0.95f);
+            cardImg.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+            cardImg.type = Image.Type.Sliced;
+            var cardRT = cardGO.GetComponent<RectTransform>();
+            cardRT.anchorMin = cardRT.anchorMax = new Vector2(0.5f, 0.5f);
+            cardRT.anchoredPosition = new Vector2(
+                S(-totalW / 2f + cardW / 2f + i * (cardW + gap)), S(30f));
+            cardRT.sizeDelta = new Vector2(S(cardW), S(cardH));
+
+            Text info = MakeText(cardGO.transform, "후보 정보", S(24f));
+            info.alignment = TextAnchor.UpperLeft;
+            var irt = info.rectTransform;
+            irt.anchorMin = new Vector2(0f, 0f);
+            irt.anchorMax = new Vector2(1f, 1f);
+            irt.offsetMin = new Vector2(S(20f), S(150f));
+            irt.offsetMax = new Vector2(-S(20f), -S(20f));
+
+            Button recruit = MakeButton(cardGO.transform, "RecruitButton",
+                "영입", new Color(0.22f, 0.62f, 0.40f), S(28f));
+            var rrt = recruit.GetComponent<RectTransform>();
+            rrt.anchorMin = rrt.anchorMax = new Vector2(0.5f, 0f);
+            rrt.pivot = new Vector2(0.5f, 0f);
+            rrt.anchoredPosition = new Vector2(0f, S(24f));
+            rrt.sizeDelta = new Vector2(S(260f), S(100f));
+            Wire(recruit, panel, recruitHandlers[i]);
+
+            panel.slotInfoTexts[i] = info;
+            panel.recruitButtons[i] = recruit;
+        }
+
+        // 연결
+        hud.recruitPanel = panel;
+        panelGO.SetActive(false);
+
+        EditorUtility.SetDirty(panel);
+        EditorUtility.SetDirty(hud);
+    }
+
+    /// <summary>기존 영웅 관리 패널에 [해고] 버튼 주입 (없을 때만) — 영입 스펙 v1</summary>
+    static void PatchDismissButton(Canvas canvas)
+    {
+        var manage = Object.FindFirstObjectByType<HeroManagePanel>(FindObjectsInactive.Include);
+        if (manage == null || manage.dismissButton != null) return;
+        if (manage.transform.Find("DismissButton") != null) return;
+
+        Button dismiss = MakeButton(manage.transform, "DismissButton",
+            "해고 (환급 없음)", new Color(0.55f, 0.22f, 0.25f), S(28f));
+        var drt = dismiss.GetComponent<RectTransform>();
+        drt.anchorMin = drt.anchorMax = new Vector2(1f, 0f);
+        drt.pivot = new Vector2(1f, 0f);
+        drt.anchoredPosition = new Vector2(-S(30f), S(30f));
+        drt.sizeDelta = new Vector2(S(320f), S(90f));
+        Wire(dismiss, manage, nameof(HeroManagePanel.OnClickDismiss));
+
+        manage.dismissButton = dismiss;
+        EditorUtility.SetDirty(manage);
+    }
+
     /// <summary>출정 패널 (파티 3명 선택 → 출발) 생성 및 연결 — 캔버스 기준 해상도에 맞게 크기 보정</summary>
     static void BuildSortieUIInternal(Canvas canvas, LobbyHUD hud)
     {
@@ -291,7 +454,7 @@ public static class LobbySceneBuilder
         entry.gameObject.SetActive(false);
 
         // 선택 카운트
-        Text count = MakeText(panelGO.transform, "파티 선택  0 / 3", S(34f));
+        Text count = MakeText(panelGO.transform, "파티 선택  0 / 5", S(34f));
         var cntRT = count.rectTransform;
         cntRT.anchorMin = cntRT.anchorMax = new Vector2(0.5f, 0f);
         cntRT.pivot = new Vector2(0.5f, 0f);
@@ -382,10 +545,21 @@ public static class LobbySceneBuilder
         drt.anchoredPosition = new Vector2(0f, 60f);
         drt.sizeDelta = new Vector2(820f, 540f);
 
+        // 해고 버튼 (영입 스펙 v1 — 환급 없음)
+        Button dismiss = MakeButton(panelGO.transform, "DismissButton",
+            "해고 (환급 없음)", new Color(0.55f, 0.22f, 0.25f), 28);
+        var dbrt = dismiss.GetComponent<RectTransform>();
+        dbrt.anchorMin = dbrt.anchorMax = new Vector2(1f, 0f);
+        dbrt.pivot = new Vector2(1f, 0f);
+        dbrt.anchoredPosition = new Vector2(-30f, 30f);
+        dbrt.sizeDelta = new Vector2(320f, 90f);
+        Wire(dismiss, panel, nameof(HeroManagePanel.OnClickDismiss));
+
         // 연결
         panel.listRoot = listGO.transform;
         panel.entryTemplate = entry.gameObject;
         panel.detailText = detail;
+        panel.dismissButton = dismiss;
         hud.heroManagePanel = panel;
         RetrofitScroll(lrt); // 목록 스크롤 (16인 로스터 대응)
         panelGO.SetActive(false);

@@ -52,7 +52,6 @@ public class RunManager : MonoBehaviour
     public RunPhase Phase { get; private set; } = RunPhase.None;
     public LocationDefinition TravelDestination { get; private set; }
 
-    public List<HeroDefinition> CurrentCandidates { get; } = new List<HeroDefinition>();
     public List<EquipmentDefinition> LastDrops { get; } = new List<EquipmentDefinition>();
     public List<string> LastUnlockedHeroNames { get; } = new List<string>();
 
@@ -65,16 +64,28 @@ public class RunManager : MonoBehaviour
         Profile = PlayerProfile.Load();
     }
 
-    // ---------- 런 시작 (GDD 6: 보유 영웅 중 3명 선택 후 시작) ----------
+    // ---------- 런 시작 (영입 스펙 v1: 로스터에서 선택한 최대 5명 출전) ----------
 
-    public void StartRun(List<HeroDefinition> starters)
+    public void StartRun(List<OwnedHero> starters)
     {
-        Run = new RunState(starters, config.recruitChances);
+        Run = new RunState(starters);
         Run.battleNumber = 0;
         AssignStarterWeapons(); // ※ 임시 — 무기 획득/생성 흐름은 장비 개편에서
         World = new WorldState(world, world.defaultStartLocation); // 시작 위치는 임시 (미확정)
         battleController.ClearField(); // 이전 런의 파티 정리
         EnterExplore();
+    }
+
+    /// <summary>기존 정의 기반 호출 호환 — 로스터에서 해당 정의의 보유 영웅을 찾아 출전</summary>
+    public void StartRun(List<HeroDefinition> starters)
+    {
+        var owned = new List<OwnedHero>();
+        foreach (var d in starters)
+        {
+            var h = HeroRoster.Get(d);
+            if (h != null) owned.Add(h);
+        }
+        StartRun(owned);
     }
 
     /// <summary>
@@ -91,6 +102,14 @@ public class RunManager : MonoBehaviour
 
         foreach (var h in Run.party)
         {
+            // 시작 영웅: 표에 확정된 무기 지급 (브란=검, 리나=활, 오웬=마법 도구)
+            if (h.owned != null && h.owned.hasFixedWeapon)
+            {
+                var fixedW = weapons.Find(w => w.weaponType == h.owned.fixedWeapon);
+                if (fixedW != null) { h.weapon = fixedW; continue; }
+            }
+
+            // 랜덤 영웅: 액티브 무기 조건에 맞는 무기 지급 (임시 — 장비 개편에서 대체)
             var req = h.owned != null && h.owned.activeSkill != null
                 ? h.owned.activeSkill.weaponRequirement
                 : WeaponRequirement.None;
@@ -104,11 +123,16 @@ public class RunManager : MonoBehaviour
         }
     }
 
-    /// <summary>임시 로비: 해금 영웅 중 앞의 3명으로 런 시작 (영웅 선택 UI는 추후)</summary>
+    /// <summary>임시 로비/직접 실행: 로스터 앞에서부터 최대 5명으로 출전 (출전 선택 UI는 로비 개편에서)</summary>
     public void StartDefaultRun()
     {
-        var unlocked = Profile.GetUnlockedHeroes(heroDatabase);
-        var starters = unlocked.GetRange(0, Mathf.Min(RunState.StartPartySize, unlocked.Count));
+        HeroRoster.EnsureStarters(heroDatabase); // 비어 있으면 시작 3명 지급 (전멸 소프트락 방지 겸용)
+        var starters = new List<OwnedHero>();
+        foreach (var h in HeroRoster.Heroes)
+        {
+            if (starters.Count >= RunState.MaxPartySize) break;
+            starters.Add(h);
+        }
         StartRun(starters);
     }
 
@@ -262,63 +286,14 @@ public class RunManager : MonoBehaviour
     public void ReportBattleLost()
     {
         Run.inBattle = false;
+        EndExpedition(); // 전멸 = 원정 종료 (출전 사망자 전원 영구 제거 — 로스터가 비면 다음 진입 시 시작 3명 재지급)
         SetPhase(RunPhase.RunFailed);
     }
 
-    /// <summary>전리품 팝업의 '확인' 버튼이 호출</summary>
+    /// <summary>전리품 팝업의 '확인' 버튼이 호출 (런 내 영입 폐지 — 영입은 로비 상점)</summary>
     public void ConfirmLoot()
     {
         if (Phase != RunPhase.Loot) return;
-
-        if (ShouldRecruitNow())
-        {
-            GenerateCandidates();
-            SetPhase(RunPhase.Recruit);
-        }
-        else
-        {
-            EnterExplore();
-        }
-    }
-
-    // ---------- 영입 (※ 보류 중 — recruitChances=0으로 꺼둠. 방식 확정 후 재작업) ----------
-
-    bool ShouldRecruitNow()
-    {
-        if (Run.recruitChancesLeft <= 0) return false;
-        if (Run.party.Count >= RunState.MaxPartySize) return false;
-        return Array.IndexOf(config.recruitAfterBattle, Run.battleNumber) >= 0;
-    }
-
-    void GenerateCandidates()
-    {
-        CurrentCandidates.Clear();
-        var pool = new List<HeroDefinition>();
-        foreach (var h in heroDatabase.heroes)
-            if (h != null && !Run.Contains(h)) pool.Add(h);
-
-        int count = Mathf.Min(config.candidatesPerRecruit, pool.Count);
-        for (int i = 0; i < count; i++)
-        {
-            int idx = UnityEngine.Random.Range(0, pool.Count);
-            CurrentCandidates.Add(pool[idx]);
-            pool.RemoveAt(idx);
-        }
-
-        if (CurrentCandidates.Count == 0) EnterExplore();
-    }
-
-    public void ChooseRecruit(int candidateIndex)
-    {
-        if (Phase != RunPhase.Recruit) return;
-        if (candidateIndex < 0 || candidateIndex >= CurrentCandidates.Count) return;
-
-        HeroDefinition def = CurrentCandidates[candidateIndex];
-        bool wasLocked = !Profile.IsUnlocked(def);
-        Run.Recruit(def, wasLocked);
-        Run.recruitChancesLeft--;
-        CurrentCandidates.Clear();
-
         EnterExplore();
     }
 
@@ -326,17 +301,17 @@ public class RunManager : MonoBehaviour
 
     void FinishRunClear()
     {
-        // GDD 7 유력안: 미해금 영웅 영입 → 죽이지 않고 런 클리어 → 영구 해금
-        LastUnlockedHeroNames.Clear();
-        foreach (var h in Run.party)
-        {
-            if (h.recruitedWhileLocked && !h.diedThisRun && !Profile.IsUnlocked(h.definition))
-            {
-                Profile.Unlock(h.definition);
-                LastUnlockedHeroNames.Add(h.definition.displayName);
-            }
-        }
+        LastUnlockedHeroNames.Clear(); // 해금 모델 폐지 (영입 스펙 v1: 소유의 원천은 로스터)
+        EndExpedition();
         SetPhase(RunPhase.RunClear);
+    }
+
+    /// <summary>원정 1회 종료 공통 처리 (클리어/실패/귀환 모두) — 영입 스펙 v1</summary>
+    void EndExpedition()
+    {
+        int dead = HeroRoster.RemoveDeadFrom(Run.party); // 영구 사망 — 로스터에서 제거
+        if (dead > 0) Debug.Log($"[RunManager] 영구 사망 {dead}명 — 로스터에서 제거");
+        RecruitShop.Refresh(heroDatabase);               // 원정 종료 시 후보 3명 전체 교체
     }
 
     void GrantEquipmentDrops()

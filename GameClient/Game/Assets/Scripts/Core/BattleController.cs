@@ -101,8 +101,8 @@ public class BattleController : MonoBehaviour
             Hero hero = UnitFactory.SpawnHero(inst, arenaCenter + slots[i]);
             hero.OnDeath += _ =>
             {
-                inst.diedThisRun = true; // 해금 조건 추적 (GDD 7)
-                inst.isDead = true;      // 교회에서 부활할 때까지 사망 유지
+                inst.diedThisRun = true;
+                inst.isDead = true;      // 영구 사망 (영입 스펙 v1) — 원정 종료 시 로스터에서 제거
                 inst.currentHP = 0f;
             };
             spawned.Add(hero.gameObject);

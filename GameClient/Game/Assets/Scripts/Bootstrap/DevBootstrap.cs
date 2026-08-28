@@ -91,10 +91,15 @@ public class DevBootstrap : MonoBehaviour
     {
         runManager.Profile.EnsureDefaults(runManager.heroDatabase);
 
-        // 로비 출정으로 진입했으면 선택된 파티로, 아니면(게임 씬 직접 실행) 기본 3명으로
+        // 영입 스펙 v1: 메타 상태 준비 (로스터/골드/영입 후보 — 저장 시스템 전 인메모리)
+        HeroRoster.EnsureStarters(runManager.heroDatabase);
+        GoldWallet.EnsureDevGold();
+        RecruitShop.EnsureCandidates(runManager.heroDatabase);
+
+        // 로비 출정으로 진입했으면 선택된 파티로, 아니면(게임 씬 직접 실행) 로스터 앞 5명으로
         if (SortieData.HasSelection)
         {
-            var starters = SortieData.Resolve(runManager.heroDatabase);
+            var starters = SortieData.ResolveOwned(); // heroId 우선, 정의 id 폴백
             SortieData.Clear();
             if (starters.Count > 0)
             {

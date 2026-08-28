@@ -38,8 +38,14 @@ public class LobbyController : MonoBehaviour
                              "[Tools > GrabProto > 게임 데이터 에셋 생성] 후 연결하세요.");
         }
 
-        Profile = PlayerProfile.Load();
-        Profile.EnsureDefaults(heroDatabase);
+        Profile = PlayerProfile.Load(); // 구 해금 모델 — 로스터 전환 후 로직에서는 미사용 (저장 통합 시 정리)
+
+        // 영입 스펙 v1: 메타 상태 준비 (로스터/골드/영입 후보 — 저장 시스템 전 인메모리)
+        var skillPool = heroDatabase.skillPool;
+        HeroRoster.SetSkillPool(skillPool != null && skillPool.Count > 0 ? skillPool : DevGameData.CreateSkillPool());
+        HeroRoster.EnsureStarters(heroDatabase);
+        GoldWallet.EnsureDevGold();
+        RecruitShop.EnsureCandidates(heroDatabase);
 
         if (authoredSpace == null)
             BuildPlaceholderSpace();
@@ -49,12 +55,14 @@ public class LobbyController : MonoBehaviour
 
     void SpawnHeroes()
     {
-        List<HeroDefinition> unlocked = Profile.GetUnlockedHeroes(heroDatabase);
-        int count = Mathf.Min(unlocked.Count, maxVisibleHeroes);
+        // 영입 스펙 v1: 로비 배회 인원 = 실제 보유 로스터 (해금 목록 아님)
+        var roster = HeroRoster.Heroes;
+        int count = Mathf.Min(roster.Count, maxVisibleHeroes);
 
         for (int i = 0; i < count; i++)
         {
-            var go = new GameObject($"LobbyHero_{unlocked[i].id}");
+            if (roster[i].definition == null) continue;
+            var go = new GameObject($"LobbyHero_{roster[i].heroId}");
             go.transform.SetParent(transform, false);
             go.transform.position = new Vector3(
                 Random.Range(-spaceHalfWidth + 2.5f, spaceHalfWidth - 2.5f),
@@ -62,7 +70,7 @@ public class LobbyController : MonoBehaviour
                 0f);
 
             var actor = go.AddComponent<LobbyHeroActor>();
-            actor.Init(unlocked[i], this);
+            actor.Init(roster[i].definition, this);
             actors.Add(actor);
         }
     }

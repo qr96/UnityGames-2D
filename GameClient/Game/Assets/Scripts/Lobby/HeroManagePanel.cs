@@ -3,8 +3,8 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 영웅 관리 패널 (GDD 3: 영웅 관리 → 목록 → 선택 → 상세).
-/// 초기 버전은 정보 확인만 — 장비(유물) 장착은 시스템 확정 후 추가.
+/// 영웅 관리 패널 (영입 스펙 v1: 로스터 기반).
+/// 보유 영웅(HeroRoster, 최대 8명) 목록 → 선택 → 상세(정보 전부 공개) + [해고] (환급 없음).
 /// 목록 항목은 entryTemplate(씬 오브젝트) 복제 → 스타일은 에디터에서 수정 가능.
 /// </summary>
 public class HeroManagePanel : MonoBehaviour
@@ -16,23 +16,20 @@ public class HeroManagePanel : MonoBehaviour
     public Transform listRoot;
     public GameObject entryTemplate; // 비활성 템플릿 (Button + Text)
     public Text detailText;
+    public Button dismissButton;     // [해고] — 선택된 영웅 있을 때만 활성
 
     readonly List<GameObject> spawnedEntries = new List<GameObject>();
+    OwnedHero selectedHero;
 
     public void Open()
     {
         if (lobby == null)
             lobby = Object.FindFirstObjectByType<LobbyController>();
-        if (lobby == null)
-        {
-            Debug.LogError("[HeroManagePanel] LobbyController를 찾을 수 없습니다.");
-            return;
-        }
 
         gameObject.SetActive(true);
+        selectedHero = null;
         RebuildList();
-        if (detailText != null)
-            detailText.text = "영웅을 선택하세요.";
+        RefreshDetail();
 
         // 스크롤이 적용되어 있으면 열 때 맨 위로
         var scroll = listRoot != null ? listRoot.GetComponentInParent<ScrollRect>(true) : null;
@@ -44,6 +41,20 @@ public class HeroManagePanel : MonoBehaviour
         gameObject.SetActive(false);
     }
 
+    /// <summary>[해고] 버튼 (빌더가 연결) — 환급 없음 (영입 스펙 v1)</summary>
+    public void OnClickDismiss()
+    {
+        if (selectedHero == null) return;
+        if (!HeroRoster.Dismiss(selectedHero)) return;
+
+        selectedHero = null;
+        RebuildList();
+        RefreshDetail();
+        // 참고: 로비를 배회 중인 배우(LobbyHeroActor)는 씬 재진입 시 갱신됨 (연출 전용)
+    }
+
+    // ---------- 내부 ----------
+
     void RebuildList()
     {
         foreach (var go in spawnedEntries)
@@ -52,44 +63,37 @@ public class HeroManagePanel : MonoBehaviour
 
         if (listRoot == null || entryTemplate == null) return;
 
-        List<HeroDefinition> unlocked = lobby.Profile.GetUnlockedHeroes(lobby.heroDatabase);
-        foreach (HeroDefinition def in unlocked)
+        foreach (OwnedHero hero in HeroRoster.Heroes)
         {
             GameObject entry = Instantiate(entryTemplate, entryTemplate.transform.parent);
-            entry.name = $"Entry_{def.id}";
+            entry.name = $"Entry_{hero.heroId}";
             entry.SetActive(true);
             spawnedEntries.Add(entry);
 
             Text label = entry.GetComponentInChildren<Text>(true);
-            if (label != null) label.text = $"{def.displayName}   ({Role(def)})";
+            if (label != null) label.text = HeroInfoText.ListLabel(hero);
 
             Button button = entry.GetComponent<Button>();
-            HeroDefinition captured = def; // 클로저 캡처
+            OwnedHero captured = hero; // 클로저 캡처
             if (button != null)
-                button.onClick.AddListener(() => ShowDetail(captured));
+                button.onClick.AddListener(() => Select(captured));
         }
     }
 
-    void ShowDetail(HeroDefinition def)
+    void Select(OwnedHero hero)
     {
-        if (detailText == null) return;
-
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine($"{def.displayName}  ({Role(def)})");
-        sb.AppendLine();
-        sb.AppendLine($"체력          {def.maxHP:0}");
-        sb.AppendLine($"공격력        {def.attack:0}");
-        sb.AppendLine($"공격 사거리   {def.attackRange:0.0}");
-        sb.AppendLine($"공격 주기     {def.attackInterval:0.0}초");
-        sb.AppendLine($"이동 속도     {def.moveSpeed:0.0}");
-        sb.AppendLine($"기본 공격     공격력의 {def.basicAttackPercent:0}%");
-        if (def.skill != null)
-        {
-            sb.AppendLine();
-            sb.AppendLine($"스킬          {def.skill.displayName} (쿨타임 {def.skill.cooldown:0}초)");
-        }
-        detailText.text = sb.ToString();
+        selectedHero = hero;
+        RefreshDetail();
     }
 
-    static string Role(HeroDefinition d) => HeroClassUtil.Korean(d.heroClass);
+    void RefreshDetail()
+    {
+        if (detailText != null)
+            detailText.text = selectedHero != null
+                ? HeroInfoText.Build(selectedHero)
+                : $"영웅을 선택하세요.  (보유 {HeroRoster.Heroes.Count} / {HeroRoster.MaxRoster})";
+
+        if (dismissButton != null)
+            dismissButton.interactable = selectedHero != null;
+    }
 }

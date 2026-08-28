@@ -52,6 +52,12 @@ public static class DevGameData
         var db = ScriptableObject.CreateInstance<HeroDatabase>();
         db.skillPool = CreateSkillPool();
 
+        // ---- 시작 영웅 전용 정의 (표 확정 — 스탯/액티브/특성/무기는 HeroRoster.EnsureStarters가 지정) ----
+        db.starters.Add(MakeHero("bran", "브란", new Color(0.35f, 0.50f, 0.90f), 0.95f, speed: 1.7f));
+        db.starters.Add(MakeHero("rina", "리나", new Color(0.95f, 0.75f, 0.35f), 0.80f, speed: 1.9f));
+        db.starters.Add(MakeHero("owen", "오웬", new Color(0.60f, 0.85f, 0.70f), 0.85f, speed: 1.7f));
+
+        // ---- 랜덤 후보 외형 템플릿 풀 ----
         // 색/이름만 유의미 — HP/공격은 OwnedHero 굴림, 사거리/주기는 무기, 액티브는 풀에서 배정.
         db.heroes.Add(MakeHero("bram", "브람", new Color(0.40f, 0.55f, 0.95f), 1.00f, speed: 1.6f));
         db.heroes.Add(MakeHero("kyle", "카일", new Color(0.90f, 0.45f, 0.30f), 0.95f, speed: 1.7f));

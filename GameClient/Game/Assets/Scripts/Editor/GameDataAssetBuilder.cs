@@ -34,6 +34,8 @@ public static class GameDataAssetBuilder
                 AssetDatabase.CreateAsset(sk, $"{Root}/Skills/Skill_{sk.id}.asset");
         foreach (var hero in heroDb.heroes)
             AssetDatabase.CreateAsset(hero, $"{Root}/Heroes/Hero_{hero.id}.asset");
+        foreach (var hero in heroDb.starters)
+            AssetDatabase.CreateAsset(hero, $"{Root}/Heroes/Starter_{hero.id}.asset");
         AssetDatabase.CreateAsset(heroDb, $"{Root}/Heroes/HeroDatabase.asset");
 
         // ---- 장비 ----

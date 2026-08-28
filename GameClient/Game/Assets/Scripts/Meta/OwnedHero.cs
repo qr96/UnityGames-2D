@@ -60,10 +60,15 @@ public class OwnedHero
     public const int MaxLevel = 10;
 
     public string heroId;             // 영구 인스턴스 고유 키 (저장/조회용)
-    public HeroDefinition definition; // 신원/비주얼/공격타입/스킬 원본
+    public HeroDefinition definition; // 신원/비주얼 원본
     public int level = 1;
     public HeroStatBlock stats = new HeroStatBlock();
     public SkillDefinition activeSkill; // 생성 시 풀에서 랜덤 배정, 교체 불가 (액티브 스펙 v2)
+    public string traitId = "";         // 조건부 고유 특성 1개 — 효과는 목록 확정 후 (TraitCatalog)
+
+    // 시작 영웅 전용: 확정 지급 무기 (표 기준). 랜덤 영웅은 없음 → 임시 지급 로직 사용
+    public bool hasFixedWeapon;
+    public WeaponType fixedWeapon;
 
     public OwnedHero(string heroId, HeroDefinition definition, HeroStatBlock stats, int level = 1)
     {
@@ -85,19 +90,27 @@ public class OwnedHero
 }
 
 /// <summary>
-/// 보유 영웅 로스터 — 저장 시스템 도입 전 인메모리 대체물.
-/// HeroDefinition으로 진입하는 기존 흐름(SortieData/RunState)과의 호환 창구:
-/// 정의당 1명의 OwnedHero를 자동 생성해 유지.
-///   · 굴림 시드 = 정의 id 해시 → 세션을 다시 시작해도 같은 영웅은 같은 스탯
-///     (영구 저장처럼 보이게 하는 개발용 장치. 정식 생성/저장 도입 시 교체)
+/// 보유 영웅 로스터 (영입 스펙 v1) — 저장 시스템 도입 전 인메모리 대체물.
+///   · 최대 8명 보유, 출전은 별도(최대 5명 — RunState)
+///   · 시작 영웅: 고정 3명 지급 (랜덤 아님 — 스탯 중간값 고정, 액티브 고정)
+///   · 영입: RecruitShop에서 랜덤 생성 후보를 골드로 영입 → Recruit()
+///   · 해고: 가능, 환급 없음 → Dismiss()
+///   · 사망: 영구 사망 — 원정 종료 시 RemoveDeadFrom()으로 로스터에서 제거
+///   · ※ 임시 안전장치: 로스터가 비면 시작 3명 재지급 (전멸 소프트락 방지 — 정식 규칙 확정 시 교체)
+/// 저장 시스템 도입 시 heroes 리스트가 직렬화 대상.
 /// </summary>
 public static class HeroRoster
 {
-    static readonly Dictionary<string, OwnedHero> owned = new Dictionary<string, OwnedHero>();
+    public const int MaxRoster = 8;
+
+    static readonly List<OwnedHero> heroes = new List<OwnedHero>();
     static List<SkillDefinition> skillPool = new List<SkillDefinition>();
 
+    public static IReadOnlyList<OwnedHero> Heroes => heroes;
+    public static bool HasSpace => heroes.Count < MaxRoster;
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics() { owned.Clear(); skillPool.Clear(); }
+    static void ResetStatics() { heroes.Clear(); skillPool.Clear(); }
 
     /// <summary>액티브 배정 풀 설정 — 부트스트랩이 영웅 생성 전에 호출.</summary>
     public static void SetSkillPool(List<SkillDefinition> pool)
@@ -105,35 +118,98 @@ public static class HeroRoster
         skillPool = pool ?? new List<SkillDefinition>();
     }
 
-    /// <summary>정의에 대응하는 보유 영웅. 없으면 임시 굴림으로 생성 (스탯 + 액티브 랜덤 배정).</summary>
-    public static OwnedHero Get(HeroDefinition def)
-    {
-        if (def == null) return null;
-        if (owned.TryGetValue(def.id, out var hero)) return hero;
+    // ---------------- 시작 영웅 ----------------
 
-        var rng = new System.Random(StableSeed(def.id)); // 세션 간 동일 굴림 (임시)
-        hero = new OwnedHero(def.id, def, HeroStatBlock.Roll(rng));
-        if (skillPool.Count > 0)
-            hero.activeSkill = skillPool[rng.Next(skillPool.Count)]; // 영구 고정, 교체 불가
-        owned[def.id] = hero;
+    /// <summary>
+    /// 로스터가 비어 있으면 고정 시작 영웅 3명 지급 (시작 영웅 표 확정치 — 랜덤 아님).
+    ///   브란: HP 115/175, 공격 9/17, 치확 4%/치피 150%, 전투 함성, 끈질김, 검
+    ///   리나: HP 90/160, 공격 12/20, 치확 7%/치피 155%, 저격, 처형인, 활
+    ///   오웬: HP 100/185, 공격 10/18, 치확 5%/치피 145%, 응급 치료, 전우애, 마법 도구
+    /// (전멸로 로스터가 비어도 재지급 — 임시 소프트락 방지)
+    /// </summary>
+    public static void EnsureStarters(HeroDatabase db)
+    {
+        if (heroes.Count > 0 || db == null) return;
+        var starters = db.starters.Count >= 3 ? db.starters : db.heroes; // 폴백: 일반 목록 앞 3명
+        if (starters.Count == 0) return;
+
+        AddStarter(starters, 0, Block(115f, 175f, 9f, 17f, 4f, 150f), "battlecry", "tenacity", WeaponType.Sword);
+        AddStarter(starters, 1, Block(90f, 160f, 12f, 20f, 7f, 155f), "snipe", "executioner", WeaponType.Bow);
+        AddStarter(starters, 2, Block(100f, 185f, 10f, 18f, 5f, 145f), "firstaid", "camaraderie", WeaponType.MagicTool);
+    }
+
+    static void AddStarter(List<HeroDefinition> defs, int index,
+        HeroStatBlock block, string skillId, string traitId, WeaponType weapon)
+    {
+        if (index >= defs.Count || defs[index] == null) return;
+        var def = defs[index];
+        var hero = new OwnedHero($"starter_{def.id}", def, block)
+        {
+            activeSkill = FindSkill(skillId) ?? RandomSkill(new System.Random(index)),
+            traitId = traitId,
+            hasFixedWeapon = true,
+            fixedWeapon = weapon,
+        };
+        heroes.Add(hero);
+    }
+
+    static HeroStatBlock Block(float hp1, float hp10, float a1, float a10, float cc, float cd) =>
+        new HeroStatBlock { hpLv1 = hp1, hpLv10 = hp10, attackLv1 = a1, attackLv10 = a10, critChance = cc, critDamage = cd };
+
+    // ---------------- 생성 / 영입 / 해고 / 사망 ----------------
+
+    /// <summary>랜덤 영웅 생성 (영입 후보용 — 로스터 미등록 상태로 반환). 외형은 DB 템플릿 랜덤 재사용.</summary>
+    public static OwnedHero CreateRandomHero(HeroDatabase db, System.Random rng)
+    {
+        if (db == null || db.heroes.Count == 0) return null;
+        var def = db.heroes[rng.Next(db.heroes.Count)];
+        var hero = new OwnedHero(System.Guid.NewGuid().ToString("N"), def, HeroStatBlock.Roll(rng));
+        hero.activeSkill = RandomSkill(rng);
+        hero.traitId = TraitCatalog.RandomId(rng); // 특성 1개 (효과는 목록 확정 후)
         return hero;
     }
 
-    /// <summary>정식 생성/저장 시스템이 만든 영웅 등록 (추후 사용)</summary>
-    public static void Register(OwnedHero hero)
+    /// <summary>로스터에 편입 (영입 확정 시 RecruitShop이 호출). 가득 차면 실패.</summary>
+    public static bool Recruit(OwnedHero hero)
     {
-        if (hero != null && !string.IsNullOrEmpty(hero.heroId))
-            owned[hero.heroId] = hero;
+        if (hero == null || !HasSpace || heroes.Contains(hero)) return false;
+        heroes.Add(hero);
+        return true;
     }
 
-    /// <summary>문자열 → 안정 시드 (string.GetHashCode는 세션마다 달라질 수 있어 직접 계산)</summary>
-    static int StableSeed(string s)
+    /// <summary>해고 — 환급 없음 (영입 스펙 v1).</summary>
+    public static bool Dismiss(OwnedHero hero) => hero != null && heroes.Remove(hero);
+
+    /// <summary>원정 종료 시 사망 영웅 영구 제거. 제거된 수를 반환.</summary>
+    public static int RemoveDeadFrom(IEnumerable<HeroRunInstance> party)
     {
-        unchecked
-        {
-            int hash = 23;
-            foreach (char c in s) hash = hash * 31 + c;
-            return hash;
-        }
+        int removed = 0;
+        foreach (var inst in party)
+            if (inst != null && inst.isDead && inst.owned != null && heroes.Remove(inst.owned))
+                removed++;
+        return removed;
     }
+
+    // ---------------- 조회 ----------------
+
+    /// <summary>heroId 우선, 없으면 정의 id로 검색 (구 SortieData 호환).</summary>
+    public static OwnedHero FindById(string id)
+    {
+        if (string.IsNullOrEmpty(id)) return null;
+        foreach (var h in heroes)
+            if (h.heroId == id) return h;
+        foreach (var h in heroes)
+            if (h.definition != null && h.definition.id == id) return h;
+        return null;
+    }
+
+    /// <summary>정의로 보유 영웅 검색 (기존 정의 기반 흐름 호환 — 없으면 null).</summary>
+    public static OwnedHero Get(HeroDefinition def) =>
+        def != null ? FindById(def.id) : null;
+
+    static SkillDefinition FindSkill(string id) =>
+        skillPool.Find(s => s != null && s.id == id);
+
+    static SkillDefinition RandomSkill(System.Random rng) =>
+        skillPool.Count > 0 ? skillPool[rng.Next(skillPool.Count)] : null;
 }

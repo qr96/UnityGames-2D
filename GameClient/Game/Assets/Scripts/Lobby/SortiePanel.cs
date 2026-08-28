@@ -4,9 +4,9 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
-/// 출정 패널 (GDD 9: 출정 → 파티 선택(3명) → 확인 → 월드 진입).
-/// 해금 영웅 목록에서 탭으로 선택/해제, 정확히 3명(해금이 3명 미만이면 전원)일 때 출발 가능.
-/// 출발 시 선택을 SortieData에 담고 게임 씬 로드.
+/// 출정 패널 (영입 스펙 v1: 로스터에서 1~5명 자유 선택 → 출발).
+/// 보유 영웅(HeroRoster) 목록에서 탭으로 선택/해제 — 최소 1명, 최대 5명(MaxPartySize).
+/// 출발 시 선택한 영웅의 heroId를 SortieData에 담고 게임 씬 로드.
 /// </summary>
 public class SortiePanel : MonoBehaviour
 {
@@ -27,24 +27,19 @@ public class SortiePanel : MonoBehaviour
 
     class Entry
     {
-        public HeroDefinition def;
+        public OwnedHero hero;
         public GameObject root;
         public Image background;
     }
 
     readonly List<Entry> entries = new List<Entry>();
-    readonly List<HeroDefinition> selected = new List<HeroDefinition>();
-    int requiredCount = 3;
+    readonly List<OwnedHero> selected = new List<OwnedHero>();
+    int maxCount = RunState.MaxPartySize;
 
     public void Open()
     {
         if (lobby == null)
             lobby = Object.FindFirstObjectByType<LobbyController>();
-        if (lobby == null)
-        {
-            Debug.LogError("[SortiePanel] LobbyController를 찾을 수 없습니다.");
-            return;
-        }
 
         gameObject.SetActive(true);
         selected.Clear();
@@ -61,10 +56,10 @@ public class SortiePanel : MonoBehaviour
         gameObject.SetActive(false);
     }
 
-    /// <summary>출발 버튼 (빌더가 연결)</summary>
+    /// <summary>출발 버튼 (빌더가 연결) — 최소 1명 선택 시 출발 가능</summary>
     public void OnClickDepart()
     {
-        if (selected.Count != requiredCount) return;
+        if (selected.Count < 1) return;
 
         if (!Application.CanStreamedLevelBeLoaded(gameSceneName))
         {
@@ -75,7 +70,7 @@ public class SortiePanel : MonoBehaviour
         }
 
         var ids = new List<string>();
-        foreach (var def in selected) ids.Add(def.id);
+        foreach (var hero in selected) ids.Add(hero.heroId); // 보유 영웅 고유 id (영입 스펙 v1)
         SortieData.Set(ids);
 
         SceneManager.LoadScene(gameSceneName);
@@ -91,18 +86,18 @@ public class SortiePanel : MonoBehaviour
 
         if (listRoot == null || entryTemplate == null) return;
 
-        List<HeroDefinition> unlocked = lobby.Profile.GetUnlockedHeroes(lobby.heroDatabase);
-        requiredCount = Mathf.Min(RunState.StartPartySize, unlocked.Count);
+        var roster = HeroRoster.Heroes;
+        maxCount = Mathf.Min(RunState.MaxPartySize, roster.Count);
 
-        foreach (HeroDefinition def in unlocked)
+        foreach (OwnedHero hero in roster)
         {
             GameObject root = Instantiate(entryTemplate, entryTemplate.transform.parent);
-            root.name = $"Entry_{def.id}";
+            root.name = $"Entry_{hero.heroId}";
             root.SetActive(true);
 
             var entry = new Entry
             {
-                def = def,
+                hero = hero,
                 root = root,
                 background = root.GetComponent<Image>(),
             };
@@ -110,19 +105,19 @@ public class SortiePanel : MonoBehaviour
 
             Text label = root.GetComponentInChildren<Text>(true);
             if (label != null)
-                label.text = $"{def.displayName}   ({Role(def)})";
+                label.text = HeroInfoText.ListLabel(hero);
 
             Button button = root.GetComponent<Button>();
-            HeroDefinition captured = def;
+            OwnedHero captured = hero;
             if (button != null)
                 button.onClick.AddListener(() => Toggle(captured));
         }
     }
 
-    void Toggle(HeroDefinition def)
+    void Toggle(OwnedHero hero)
     {
-        if (selected.Contains(def)) selected.Remove(def);
-        else if (selected.Count < requiredCount) selected.Add(def);
+        if (selected.Contains(hero)) selected.Remove(hero);
+        else if (selected.Count < maxCount) selected.Add(hero);
         RefreshVisuals();
     }
 
@@ -130,13 +125,11 @@ public class SortiePanel : MonoBehaviour
     {
         foreach (var e in entries)
             if (e.background != null)
-                e.background.color = selected.Contains(e.def) ? SelectedColor : NormalColor;
+                e.background.color = selected.Contains(e.hero) ? SelectedColor : NormalColor;
 
         if (countText != null)
-            countText.text = $"파티 선택  {selected.Count} / {requiredCount}";
+            countText.text = $"파티 선택  {selected.Count} / {maxCount}";
         if (departButton != null)
-            departButton.interactable = selected.Count == requiredCount;
+            departButton.interactable = selected.Count >= 1;
     }
-
-    static string Role(HeroDefinition d) => HeroClassUtil.Korean(d.heroClass);
 }

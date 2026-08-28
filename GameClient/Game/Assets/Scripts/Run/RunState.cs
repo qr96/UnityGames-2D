@@ -2,40 +2,34 @@ using System.Collections.Generic;
 
 /// <summary>
 /// 런 1회의 전체 상태. 런이 끝나면 이 객체를 버림 → 장비/파티 자연 소멸 (GDD 8: 런 종료 시 소멸).
-/// 탐험 규칙: 원정 시작 시 5명 선정 후 고정 (영입 시스템은 보류 중 — recruitChances=0).
+/// 영입 스펙 v1: 출전은 로스터(최대 8명)에서 선택한 최대 5명 — 시작 직후엔 3명뿐일 수 있음.
+/// 원정 시작 후 파티 고정 (런 내 영입 없음 — 영입은 로비 상점).
 /// </summary>
 public class RunState
 {
-    public const int StartPartySize = 5;
     public const int MaxPartySize = 5;
+
+    /// <summary>※ 구 로비(SortiePanel) 호환용 — 출전 인원 개념이 로스터 기반(1~5명)으로 바뀌어
+    /// 더 이상 로직에서 사용하지 않음. 로비 개편 시 참조 정리 후 삭제 예정.</summary>
+    public const int StartPartySize = 3;
 
     public readonly List<HeroRunInstance> party = new List<HeroRunInstance>();
     public readonly List<EquipmentDefinition> inventory = new List<EquipmentDefinition>();
 
     public int battleNumber = 1;      // 1부터 시작
-    public int recruitChancesLeft;    // GDD 유력안: 2회 고정
     public bool inBattle;             // 전투 중 장비 변경 불가 가드 (GDD 8)
 
-    public RunState(IEnumerable<HeroDefinition> starters, int recruitChances)
+    public RunState(IEnumerable<OwnedHero> starters)
     {
-        foreach (var d in starters)
+        foreach (var h in starters)
         {
-            if (party.Count >= StartPartySize) break;
-            if (d != null) party.Add(new HeroRunInstance(d, recruitedWhileLocked: false));
+            if (party.Count >= MaxPartySize) break;
+            if (h != null) party.Add(new HeroRunInstance(h, recruitedWhileLocked: false));
         }
-        recruitChancesLeft = recruitChances;
     }
 
     public bool Contains(HeroDefinition def) =>
         party.Exists(h => h.definition == def);
-
-    public HeroRunInstance Recruit(HeroDefinition def, bool wasLocked)
-    {
-        if (def == null || party.Count >= MaxPartySize) return null;
-        var inst = new HeroRunInstance(def, wasLocked);
-        party.Add(inst);
-        return inst;
-    }
 
     // ---------- 장비 규칙 (GDD 8 + 무기 스펙 v2) ----------
 
@@ -53,7 +47,7 @@ public class RunState
     public bool EquipAt(HeroRunInstance hero, EquipmentDefinition item, int slotIndex)
     {
         if (inBattle) return false;          // 전투 중 장비 변경 불가 (GDD 8)
-        if (hero == null || item == null) return false;
+        if (hero == null || hero.isDead || item == null) return false;
         if (item is WeaponDefinition w) return EquipWeapon(hero, w); // 무기 스펙 v2
         if (slotIndex < 0 || slotIndex >= HeroRunInstance.MaxEquipSlots) return false;
         if (!inventory.Contains(item)) return false;
@@ -82,6 +76,7 @@ public class RunState
     {
         if (inBattle) return false; // 전투 중 장비 변경 불가 (GDD 8)
         if (from == null || to == null) return false;
+        if (from.isDead || to.isDead) return false; // 사망 영웅 장비는 소멸 확정 — 회수/이전 불가
         if (fromIndex < 0 || fromIndex >= from.equipment.Count) return false;
         if (toIndex < 0 || toIndex >= HeroRunInstance.MaxEquipSlots) return false;
         if (from == to && fromIndex == toIndex) return false;
@@ -109,7 +104,8 @@ public class RunState
     public bool Unequip(HeroRunInstance hero, int slotIndex)
     {
         if (inBattle) return false;
-        if (hero == null || slotIndex < 0 || slotIndex >= hero.equipment.Count) return false;
+        if (hero == null || hero.isDead) return false; // 사망 영웅 장비 소멸 — 회수 불가
+        if (slotIndex < 0 || slotIndex >= hero.equipment.Count) return false;
         inventory.Add(hero.equipment[slotIndex]);
         hero.equipment.RemoveAt(slotIndex);
         return true;
@@ -121,7 +117,7 @@ public class RunState
     public bool EquipWeapon(HeroRunInstance hero, WeaponDefinition weapon)
     {
         if (inBattle) return false; // 전투 중 장비 변경 불가 (GDD 8)
-        if (hero == null || weapon == null) return false;
+        if (hero == null || hero.isDead || weapon == null) return false;
         if (!inventory.Contains(weapon)) return false;
 
         inventory.Remove(weapon);
@@ -134,7 +130,7 @@ public class RunState
     public bool UnequipWeapon(HeroRunInstance hero)
     {
         if (inBattle) return false;
-        if (hero == null || hero.weapon == null) return false;
+        if (hero == null || hero.isDead || hero.weapon == null) return false; // 사망 영웅 무기 소멸
         inventory.Add(hero.weapon);
         hero.weapon = null;
         return true;
