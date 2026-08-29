@@ -95,9 +95,9 @@ public class RunManager : MonoBehaviour
     }
 
     /// <summary>
-    /// ※ 임시 (장비 개편 전): 무기 획득 경로가 아직 없어 시작 시 무기를 자동 지급.
+    /// ※ 임시 (무기 획득 경로 확정 전): 무기가 '없는' 영웅에게만 1회 지급.
+    /// 장비 영속 v1: 무기가 영웅에 영구 유지되므로 매 런 지급하면 복제됨 — 최초 1회만.
     /// 각 영웅의 액티브 무기 조건에 맞는 무기를 우선 지급해 스킬 테스트가 가능하게 함.
-    /// 같은 영웅은 같은 무기를 받도록 id 시드 고정.
     /// </summary>
     void AssignStarterWeapons()
     {
@@ -108,6 +108,8 @@ public class RunManager : MonoBehaviour
 
         foreach (var h in Run.party)
         {
+            if (h.weapon != null) continue; // 이미 보유 — 영속 유지 (재지급 = 복제 버그)
+
             // 시작 영웅: 표에 확정된 무기 지급 (브란=검, 리나=활, 오웬=마법 도구)
             if (h.owned != null && h.owned.hasFixedWeapon)
             {
@@ -303,6 +305,13 @@ public class RunManager : MonoBehaviour
     public void ReportBattleLost()
     {
         Run.inBattle = false;
+
+        // 탐험 규칙: 전멸 시 '이번 원정에서 획득한 전리품'만 소멸 (기존 보관 장비는 유지 — 장비 영속 v1).
+        // 획득 후 장착된 것은 착용자(사망)와 함께 소멸하므로 보관소에서 못 찾아도 정상.
+        foreach (var item in Run.acquiredThisRun)
+            Armory.RemoveOnce(item);
+        Run.acquiredThisRun.Clear();
+
         EndExpedition(); // 전멸 = 원정 종료 (출전 사망자 전원 영구 제거 — 로스터가 비면 다음 진입 시 시작 3명 재지급)
         SetPhase(RunPhase.RunFailed);
     }
@@ -338,7 +347,8 @@ public class RunManager : MonoBehaviour
         for (int i = 0; i < config.equipmentDropsPerBattle; i++)
         {
             var item = equipmentPool[UnityEngine.Random.Range(0, equipmentPool.Count)];
-            Run.inventory.Add(item);
+            Run.inventory.Add(item);          // = 보관소 — 획득 즉시 영구 반영 (장비 영속 v1)
+            Run.acquiredThisRun.Add(item);    // 전멸 시 소멸 대상 추적
             LastDrops.Add(item);
         }
     }

@@ -13,8 +13,19 @@ public class HeroRunInstance
 
     public OwnedHero owned;            // 영구 영웅 (레벨 + 굴림 스탯 + 고정 액티브) — 영웅 스펙 v2
     public HeroDefinition definition;  // = owned.definition (기존 참조부 호환용)
-    public WeaponDefinition weapon;    // 전용 무기 슬롯 (무기 스펙 v2) — null = 미장착(기본 공격 불가)
-    public List<EquipmentDefinition> equipment = new List<EquipmentDefinition>();
+
+    // 장비 영속 v1: 장착 상태의 원본은 OwnedHero — 런 인스턴스는 통로 (기존 호출부 호환 프로퍼티).
+    // 런 중 장착 변경이 즉시 영구 반영되고, 런 종료 시 옮길 것이 없음.
+    public WeaponDefinition weapon
+    {
+        get => owned != null ? owned.weapon : null;
+        set { if (owned != null) owned.weapon = value; }
+    }
+
+    public List<EquipmentDefinition> equipment =>
+        owned != null ? owned.equipment : fallbackEquipment;
+
+    readonly List<EquipmentDefinition> fallbackEquipment = new List<EquipmentDefinition>(); // owned 없는 비정상 케이스 방어
 
     public bool recruitedWhileLocked;  // 미해금 상태로 영입되었는가
     public bool diedThisRun;           // 런 중 한 번이라도 사망했는가 (해금 조건 판정용)

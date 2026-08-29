@@ -66,6 +66,11 @@ public class OwnedHero
     public SkillDefinition activeSkill; // 생성 시 풀에서 랜덤 배정, 교체 불가 (액티브 스펙 v2)
     public string traitId = "";         // 조건부 고유 특성 1개 — 효과는 목록 확정 후 (TraitCatalog)
 
+    // ---- 장비 영속 v1: 장착 상태는 영웅에 유지 (런 종료로 소멸하지 않음) ----
+    // 사망(로스터 제거) 시 영웅과 함께 소멸 = "사망 시 장착 장비 소멸" 규칙이 자동 성립.
+    public List<EquipmentDefinition> equipment = new List<EquipmentDefinition>();
+    public WeaponDefinition weapon;
+
     // 시작 영웅 전용: 확정 지급 무기 (표 기준). 랜덤 영웅은 없음 → 임시 지급 로직 사용
     public bool hasFixedWeapon;
     public WeaponType fixedWeapon;
@@ -177,8 +182,21 @@ public static class HeroRoster
         return true;
     }
 
-    /// <summary>해고 — 환급 없음 (영입 스펙 v1).</summary>
-    public static bool Dismiss(OwnedHero hero) => hero != null && heroes.Remove(hero);
+    /// <summary>해고 — 골드 환급 없음 (영입 스펙 v1). 장착 장비/무기는 보관소로 회수 (장비 영속 v1).</summary>
+    public static bool Dismiss(OwnedHero hero)
+    {
+        if (hero == null || !heroes.Remove(hero)) return false;
+
+        foreach (var item in hero.equipment)
+            Armory.Add(item);
+        hero.equipment.Clear();
+        if (hero.weapon != null)
+        {
+            Armory.Add(hero.weapon);
+            hero.weapon = null;
+        }
+        return true;
+    }
 
     /// <summary>원정 종료 시 사망 영웅 영구 제거. 제거된 수를 반환.</summary>
     public static int RemoveDeadFrom(IEnumerable<HeroRunInstance> party)

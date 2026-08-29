@@ -155,7 +155,7 @@ public class GameHUD : MonoBehaviour
 
             case RunPhase.RunFailed:
                 SetLabel("런 실패");
-                if (resultText != null) resultText.text = "파티가 전멸했습니다.\n이번 런의 파티와 장비는 소멸합니다.";
+                if (resultText != null) resultText.text = "파티가 전멸했습니다.\n출전 영웅과 이번 원정에서 획득한 전리품이 소멸합니다.";
                 break;
         }
 
@@ -237,7 +237,7 @@ public class GameHUD : MonoBehaviour
         string unlockLine = names.Count > 0
             ? "영구 해금: " + string.Join(", ", names)
             : "새로 해금된 영웅은 없습니다.";
-        return unlockLine + "\n이번 런의 장비는 소멸합니다.";
+        return unlockLine + "\n확보한 장비는 보관소와 영웅에게 유지됩니다.";
     }
 
     void SetLabel(string text)

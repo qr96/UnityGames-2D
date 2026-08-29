@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 
 /// <summary>
-/// 런 1회의 전체 상태. 런이 끝나면 이 객체를 버림 → 장비/파티 자연 소멸 (GDD 8: 런 종료 시 소멸).
+/// 런 1회의 전체 상태.
+/// 장비 영속 v1: 장비/무기는 런 종료로 소멸하지 않음 — 미장착분은 보관소(Armory),
+/// 장착분은 OwnedHero에 유지. 전멸 시에만 이번 원정 획득분 소멸 (RunManager 처리).
 /// 영입 스펙 v1: 출전은 로스터(최대 8명)에서 선택한 최대 5명 — 시작 직후엔 3명뿐일 수 있음.
 /// 원정 시작 후 파티 고정 (런 내 영입 없음 — 영입은 로비 상점).
 /// </summary>
@@ -14,7 +16,12 @@ public class RunState
     public const int StartPartySize = 3;
 
     public readonly List<HeroRunInstance> party = new List<HeroRunInstance>();
-    public readonly List<EquipmentDefinition> inventory = new List<EquipmentDefinition>();
+
+    /// <summary>장비 영속 v1: 런 인벤토리 = 보관소(Armory) 리스트 그 자체 — 변경이 즉시 영구 반영</summary>
+    public readonly List<EquipmentDefinition> inventory = Armory.Items;
+
+    /// <summary>이번 원정에서 획득한 전리품 — 전멸 시 이것만 소멸 (탐험 규칙)</summary>
+    public readonly List<EquipmentDefinition> acquiredThisRun = new List<EquipmentDefinition>();
 
     public int battleNumber = 1;      // 1부터 시작
     public bool inBattle;             // 전투 중 장비 변경 불가 가드 (GDD 8)
