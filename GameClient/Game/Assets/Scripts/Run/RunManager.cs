@@ -25,7 +25,7 @@ public enum RunPhase
 ///      · 전투 필요(WorldState.ShouldBattle) → Placement → Battle
 ///      · 보물(미회수)   → Loot 팝업
 ///      · 휴식 장소      → Camp
-///      · 계단           → Explore 유지 + IsAtStairs=true (HUD가 [귀환]/[내려가기] 버튼 표시)
+///      · 계단           → 도달 = 확보(Secured) — 이후 층 어디서든 [귀환]/[하강] 가능 (명세 5)
 ///   → 전투 승리 → Loot → 확인 → Explore ...
 ///   → 랜드마크 전투 승리 = RunClear (고정 맵 호환)
 ///   → 계단에서 귀환 = RunClear (임시 정책 — 전리품/해금 유지하고 런 종료)
@@ -40,6 +40,11 @@ public class RunManager : MonoBehaviour
 
     [Header("연결 (부트스트랩 또는 인스펙터에서 주입)")]
     public RunConfig config;
+
+    [Header("랜덤 맵 (부트스트랩 주입 — 하강 시 다음 층을 그때 생성, 명세 22)")]
+    public int mapSeed;
+    public MapGenerator.Config mapConfig; // null = 고정 맵 (하강 불가)
+    int currentFloor;
     public HeroDatabase heroDatabase;
     public WorldDefinition world;
     public BattleController battleController;
@@ -70,6 +75,7 @@ public class RunManager : MonoBehaviour
     {
         Run = new RunState(starters);
         Run.battleNumber = 0;
+        currentFloor = 0;
         AssignStarterWeapons(); // ※ 임시 — 무기 획득/생성 흐름은 장비 개편에서
         World = new WorldState(world, world.defaultStartLocation); // 시작 위치는 임시 (미확정)
         battleController.ClearField(); // 이전 런의 파티 정리
@@ -196,37 +202,48 @@ public class RunManager : MonoBehaviour
             return;
         }
 
-        // 계단 포함 그 외: Explore — 계단이면 IsAtStairs=true (HUD가 귀환/내려가기 버튼 표시)
+        // 계단 포함 그 외: Explore — 계단은 도달 시점에 이미 확보됨(WorldState.MarkVisited)
         EnterExplore();
     }
 
-    // ---------- 계단 (탐험 규칙: 발견 시 귀환 혹은 내려가기 선택 가능) ----------
-    // 별도 페이즈를 만들지 않고 Explore에서 선택 — HUD 미지원 상태에서도 이동이 막히지 않음.
-    // HUD 연동: Explore 중 IsAtStairs면 [내려가기](CanDescend일 때)/[귀환] 버튼 표시.
+    // ---------- 계단 확보 (명세 5·20) ----------
+    // 계단방에 도달하면 Secured (WorldState가 처리) — 이후 층 어디서든 [귀환]/[하강] 가능.
+    // 백트래킹 없음: 클리어된 안전 경로로 계단까지 돌아갔다고 추상화 (명세 5.2·21).
 
-    /// <summary>현재 계단 위에 서 있는가 (Explore 중에만 유효).</summary>
-    public bool IsAtStairs =>
-        Phase == RunPhase.Explore &&
-        World != null && World.Current != null &&
-        World.Current.fixedFunction == LocationFunction.Stairs;
+    /// <summary>귀환 가능 — 계단 확보 후 Explore 중이면 위치와 무관하게 언제든 (명세 5.2).</summary>
+    public bool CanReturn =>
+        Phase == RunPhase.Explore && World != null && World.StairsSecured;
 
-    /// <summary>내려갈 수 있는가 (마지막 층 계단은 descendTo가 없음).</summary>
-    public bool CanDescend => IsAtStairs && World.Current.descendTo != null;
+    /// <summary>하강 가능 — 확보 + (다음 층이 이미 있거나 랜덤 맵이라 생성 가능).</summary>
+    public bool CanDescend =>
+        CanReturn && (World.SecuredStairs.descendTo != null || mapConfig != null);
 
-    /// <summary>[내려가기] — 다음 층 시작 장소로 이동 (이동 연출 재사용).</summary>
+    /// <summary>[하강] — 다음 층을 이 시점에 생성해 이어 붙이고 이동 (명세 22).</summary>
     public void DescendStairs()
     {
         if (!CanDescend) return;
-        TravelDestination = World.Current.descendTo;
+
+        LocationDefinition stairs = World.SecuredStairs;
+        if (stairs.descendTo == null) // 다음 층 신규 생성 (랜덤 맵)
+        {
+            var region = MapGenerator.GenerateFloor(currentFloor + 1, mapSeed, mapConfig,
+                out var nextStart, out _);
+            world.regions.Add(region);
+            stairs.descendTo = nextStart;
+        }
+        currentFloor++;
+
+        TravelDestination = stairs.descendTo;
         SetPhase(RunPhase.Travel);
         travelController.BeginTravel(Run, World.Current, TravelDestination,
             destinationVisited: World.IsVisited(TravelDestination));
     }
 
-    /// <summary>[귀환] — 획득물을 유지하고 런 종료. ※ 임시 정책: 귀환 = 런 클리어 처리.</summary>
+    /// <summary>[귀환] — 확보한 전리품을 유지하고 원정 종료 (명세 21). ※ 임시 정책: 귀환 = 런 클리어 처리.
+    /// 전리품 '영구 보관'(명세 21)은 장비 영속화가 없어 미구현 — 장비 개편에서 처리.</summary>
     public void ReturnFromStairs()
     {
-        if (!IsAtStairs) return;
+        if (!CanReturn) return;
         FinishRunClear();
     }
 

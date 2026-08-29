@@ -27,7 +27,7 @@ public class DevBootstrap : MonoBehaviour
     public bool useRandomMap = true;
     [Tooltip("0 = 매 실행 랜덤. 그 외 = 시드 고정 (같은 시드 = 같은 맵, 버그 재현용)")]
     public int mapSeed = 0;
-    public int floorCount = 3;
+    [Tooltip("생성 파라미터 (방 생성 명세 v1.0 §24) — 층은 하강 시 그때 생성됨")]
     public MapGenerator.Config mapConfig = new MapGenerator.Config();
 
     RunManager runManager;
@@ -66,8 +66,10 @@ public class DevBootstrap : MonoBehaviour
         else if (useRandomMap)
         {
             int seed = mapSeed != 0 ? mapSeed : Random.Range(1, int.MaxValue);
-            Debug.Log($"[DevBootstrap] 랜덤 맵 생성 — seed={seed}, floors={floorCount}");
-            runManager.world = MapGenerator.GenerateWorld(seed, floorCount, mapConfig);
+            Debug.Log($"[DevBootstrap] 랜덤 맵 생성 — seed={seed} (1층, 이후 층은 하강 시 생성)");
+            runManager.world = MapGenerator.GenerateWorld(seed, mapConfig);
+            runManager.mapSeed = seed;
+            runManager.mapConfig = mapConfig; // 하강 시 다음 층 생성용 (명세 22)
         }
         else
         {

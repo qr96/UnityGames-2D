@@ -79,11 +79,11 @@ public class GameHUD : MonoBehaviour
         SetActive(mapButton, phase == RunPhase.Explore);
         if (phase != RunPhase.Explore && mapPanel != null) mapPanel.Close();
 
-        // 계단: Explore 중 계단 위에 있을 때만 표시 (탐험 규칙 — 귀환/내려가기 선택)
+        // 계단 (명세 5·20): 확보 후에는 Explore 중 위치와 무관하게 [귀환]/[하강] 상시 표시
         RunManager rmForStairs = RunManager.Instance;
-        bool atStairs = phase == RunPhase.Explore && rmForStairs != null && rmForStairs.IsAtStairs;
-        SetActive(stairsPanel, atStairs);
-        SetActive(descendButton, atStairs && rmForStairs.CanDescend);
+        bool secured = rmForStairs != null && rmForStairs.CanReturn;
+        SetActive(stairsPanel, secured);
+        SetActive(descendButton, secured && rmForStairs.CanDescend);
         SetActive(campPanel, phase == RunPhase.Camp);
         SetActive(lootPanel, phase == RunPhase.Loot);
         SetActive(resultPanel, phase == RunPhase.RunClear || phase == RunPhase.RunFailed);
@@ -112,8 +112,8 @@ public class GameHUD : MonoBehaviour
                     var region = rm.World.world.GetRegionOf(loc);
                     if (region != null) regionName = region.regionName + " · ";
                 }
-                SetLabel(rm.IsAtStairs
-                    ? $"{regionName}{locName} — 귀환하거나 더 내려갈 수 있습니다"
+                SetLabel(rm.CanReturn
+                    ? $"{regionName}{locName} — 계단 확보됨 (언제든 귀환/하강 가능)"
                     : $"{regionName}어디로 갈까요?");
                 if (exploreDirectionPanel != null) exploreDirectionPanel.Refresh();
                 break;

@@ -538,7 +538,7 @@ public static class GameUIBuilder
     /// <summary>
     /// 계단 [내려가기]/[귀환] 버튼 생성 및 연결 (탐험 규칙 — 계단 발견 시 선택).
     /// Explore 중 방향 선택 패널과 함께 표시되므로, 남쪽 방향 슬롯(하단 y≈220)과
-    /// 겹치지 않게 그 위(y=420)에 배치. 표시/숨김은 GameHUD가 IsAtStairs로 토글.
+    /// 겹치지 않게 그 위(y=420)에 배치. 표시/숨김은 GameHUD가 계단 확보 여부(CanReturn)로 토글.
     /// </summary>
     static void BuildStairsUIInternal(Canvas canvas, GameHUD hud)
     {

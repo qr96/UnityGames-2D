@@ -3,184 +3,318 @@ using System.Linq;
 using UnityEngine;
 
 /// <summary>
-/// 랜덤 맵 생성기 — 층(Region) 단위로 노드 그래프를 절차 생성.
+/// 던전 층 절차 생성기 (방 생성 명세 v1.0).
 ///
-/// 규칙 반영:
-///   · 노드 종류: 일반 전투 / 엘리트 전투 / 보물 / 계단 (특수방은 배치 슬롯만 지원, 시스템 추후)
-///   · 계단: 층마다 시작에서 가장 먼 노드에 1개 배치, descendTo = 다음 층 시작 노드
-///     (도착 시 [귀환/내려가기] 선택 처리는 TravelController/RunManager 담당)
-///   · 이동: 모든 출구를 양방향으로 연결 — 지나간 노드 재통과 가능
-///   · 정보 노출/클리어/재전투는 데이터가 아닌 런타임 상태 (MapRunState 참고)
+/// 핵심 원칙 (명세 25):
+///   계단 확보 전 — "안전망을 위해 어디로 탐험할 것인가"
+///   계단 확보 후 — "끝낼 것인가 / 내려갈 것인가 / 더 털 것인가"
 ///
-/// 알고리즘:
-///   1) 격자 위 취보(drunkard walk)로 연결된 셀 집합 선택 → 자연스럽게 스패닝 트리 간선 확보
-///   2) 인접하지만 연결 안 된 셀 쌍 중 일부에 순환 간선 추가 (우회로/재방문 동선)
-///   3) BFS 거리 기반 배치: 계단 = 최원거리, 엘리트 = 먼 구간, 보물 = 막다른 길 우선
-///   4) 나머지는 전부 일반 전투. 1층 시작 노드만 전투 없음 (RunStart)
+/// 구조 (명세 1): 트리 중심 + 막다른 가지 적극 허용 + 조건부 재합류(비용이 다른 두 경로만).
+/// 층은 하강 시점에 그 층만 생성 (명세 22) — GenerateWorld는 1층만 만들고,
+/// 다음 층은 RunManager가 하강할 때 GenerateFloor로 이어 붙임.
 ///
-/// 방향 슬롯이 상/하/좌/우 4개라 격자 기반이 기존 LocationDefinition과 그대로 호환됨.
-/// 같은 시드 = 같은 맵 (시드 저장 시 맵 재현 가능).
+/// 파이프라인 (명세 15): 방 수 결정 → 격자 위 랜덤 트리 성장 → 계단 배치(전투 거리 범위)
+/// → 엘리트(계단 필수 경로 제외, 선택 가지) → 보물(경로 밖 막다른 가지, 전부는 금지)
+/// → 조건부 재합류 → 품질 검증(명세 16) → 미달 시 폐기·재생성.
+///
+/// 격자 기반인 이유: 출구가 상/하/좌/우 4슬롯(LocationDefinition)이라 트리를 격자에
+/// 심으면 방향/좌표/겹침이 공짜로 해결됨. 같은 시드 = 같은 층.
 /// </summary>
 public static class MapGenerator
 {
+    /// <summary>생성 파라미터 (명세 24 — 하드코딩 대신 데이터화)</summary>
     [System.Serializable]
     public class Config
     {
-        [Header("격자")]
-        public int gridWidth = 5;
+        [Header("방 수 (명세 14: 초기 10~14)")]
+        public int minRoomCount = 10;
+        public int maxRoomCount = 14;
+
+        [Header("계단 전투 거리 (명세 6.3: 평균 3~4, 허용 2~6)")]
+        public int minStairCombatDistance = 2;
+        public int targetStairCombatDistance = 3;
+        public int maxStairCombatDistance = 6;
+
+        [Header("분기 (명세 8: 시작 후 1~2 전투 내 첫 분기)")]
+        public int maxLinearRoomsBeforeBranch = 2;
+        public int minBranchCount = 1;
+
+        [Header("재합류 (명세 10: 제한적 — 트리 거리가 충분히 다른 경로만)")]
+        [Range(0f, 1f)] public float rejoinPatternChance = 0.35f;
+        [Tooltip("재합류로 이을 두 방의 최소 트리 거리 (이보다 가까우면 의미 없는 루프)")]
+        public int rejoinMinTreeDistance = 4;
+
+        [Header("배치 (명세 11~12)")]
+        public int eliteMinCount = 1;
+        public int eliteMaxCount = 2;
+        public int treasureMinCount = 1;
+        public int treasureMaxCount = 2;
+
+        [Header("생성 시도")]
+        [Tooltip("품질 검증 실패 시 재생성 최대 횟수 (명세 15.13)")]
+        public int maxGenerationAttempts = 30;
+
+        [Header("격자/배치 간격")]
+        public int gridWidth = 6;
         public int gridHeight = 6;
-        [Range(0.3f, 1f), Tooltip("격자 중 실제 노드로 쓸 비율")]
-        public float fillRatio = 0.6f;
-
-        [Header("연결")]
-        [Tooltip("스패닝 트리 외에 추가할 순환 간선 수 (우회로)")]
-        public int extraLoopEdges = 2;
-
-        [Header("노드 배치 (층당)")]
-        public int eliteCount = 2;
-        public int treasureCount = 2;
-        [Tooltip("특수방 수 — 시스템 미구현이라 기본 0 (배치만 지원)")]
-        public int specialCount = 0;
-
-        [Header("배치 간격 (worldPosition)")]
         public float cellSpacingX = 16f;
         public float cellSpacingY = 14f;
-        [Tooltip("층별 worldPosition 오프셋 (겹침 방지)")]
         public float floorOffsetX = 240f;
     }
 
     static readonly Vector2Int[] Dirs =
     {
-        new Vector2Int(0, 1),  // North
-        new Vector2Int(0, -1), // South
-        new Vector2Int(-1, 0), // West
-        new Vector2Int(1, 0),  // East
+        new Vector2Int(0, 1), new Vector2Int(0, -1),
+        new Vector2Int(-1, 0), new Vector2Int(1, 0),
     };
 
-    // ---- 이름/미리보기 풀 (표현은 항상 실제 장소로 — GDD 4) ----
+    // 표현은 항상 실제 장소로 (GDD 4)
     static readonly string[] NormalNames = { "숲길", "초원", "산길", "습지", "골짜기", "덤불 지대", "바위 언덕", "버려진 농가", "안개 낀 들판", "무너진 담장" };
     static readonly string[] NormalPreviews = { "수풀 사이에서 기척이 느껴진다", "발자국이 어지럽게 남아 있다", "낮게 으르렁거리는 소리", "공기가 무겁다", "무언가 지나간 흔적" };
     static readonly string[] EliteNames = { "짐승의 둥지", "무너진 제단", "검은 웅덩이", "뒤틀린 고목", "핏자국 동굴" };
     static readonly string[] ElitePreviews = { "강한 기운이 새어 나온다", "뼈 무더기가 쌓여 있다", "섬뜩한 정적이 흐른다" };
     static readonly string[] TreasureNames = { "낡은 석실", "묻힌 궤짝", "잊힌 창고", "허물어진 사당" };
     static readonly string[] TreasurePreviews = { "무언가 반짝인다", "손대지 않은 흔적", "먼지 쌓인 궤가 보인다" };
-    static readonly string[] SpecialNames = { "기묘한 방", "이상한 문", "빛나는 균열" };
 
     // =================================================================
     //  공개 API
     // =================================================================
 
-    /// <summary>층 floorCount개를 한 번에 생성하고 계단(descendTo)으로 연결한 월드 반환.</summary>
-    public static WorldDefinition GenerateWorld(int seed, int floorCount, Config cfg = null)
+    /// <summary>1층만 생성한 월드 반환 — 다음 층은 하강 시 GenerateFloor로 이어 붙임 (명세 22).</summary>
+    public static WorldDefinition GenerateWorld(int seed, Config cfg = null)
     {
         cfg ??= new Config();
         var world = ScriptableObject.CreateInstance<WorldDefinition>();
-
-        LocationDefinition prevStairs = null;
-        for (int f = 0; f < floorCount; f++)
-        {
-            var region = GenerateFloor(f, seed, cfg, out var start, out var stairs);
-            world.regions.Add(region);
-
-            if (f == 0) world.defaultStartLocation = start;
-            if (prevStairs != null) prevStairs.descendTo = start; // 이전 층 계단 → 이번 층 시작
-            prevStairs = stairs; // 마지막 층 계단은 descendTo = null
-        }
+        var region = GenerateFloor(0, seed, cfg, out var start, out _);
+        world.regions.Add(region);
+        world.defaultStartLocation = start;
         return world;
     }
 
-    /// <summary>층 하나 생성. start = 층 진입 노드, stairs = 내려가는 계단 노드.</summary>
+    /// <summary>층 하나 생성 (품질 검증 포함 — 미달 시 재생성). start = 층 진입 방, stairs = 계단방.</summary>
     public static RegionDefinition GenerateFloor(int floorIndex, int seed, Config cfg,
         out LocationDefinition start, out LocationDefinition stairs)
     {
-        var rng = new System.Random(unchecked(seed * 486187739 + floorIndex * 16777619));
+        cfg ??= new Config();
 
-        // ---- 1) 취보로 셀 선택 + 트리 간선 ----
-        int targetCells = Mathf.Clamp(
-            Mathf.RoundToInt(cfg.gridWidth * cfg.gridHeight * cfg.fillRatio),
-            6, cfg.gridWidth * cfg.gridHeight);
+        for (int attempt = 0; attempt < Mathf.Max(1, cfg.maxGenerationAttempts); attempt++)
+        {
+            var rng = new System.Random(unchecked(seed * 486187739 + floorIndex * 16777619 + attempt * 92821));
+            var map = TryGenerate(rng, cfg);
+            if (map != null && Validate(map, cfg))
+                return BuildRegion(map, floorIndex, cfg, rng, out start, out stairs);
+        }
 
-        var startCell = new Vector2Int(rng.Next(cfg.gridWidth), 0); // 아래쪽 행에서 시작
-        var cells = new HashSet<Vector2Int> { startCell };
-        var edges = new HashSet<(Vector2Int, Vector2Int)>();
+        // 모든 시도 실패 — 마지막 시도라도 사용 (연결성은 트리라 항상 보장됨)
+        Debug.LogWarning($"[MapGenerator] {cfg.maxGenerationAttempts}회 내 품질 기준 미달 — 마지막 생성물 사용 (floor {floorIndex})");
+        var fallbackRng = new System.Random(unchecked(seed * 486187739 + floorIndex * 16777619 + 999983));
+        MapDraft fallback = null;
+        while (fallback == null) fallback = TryGenerate(fallbackRng, cfg);
+        return BuildRegion(fallback, floorIndex, cfg, fallbackRng, out start, out stairs);
+    }
 
-        var cur = startCell;
+    // =================================================================
+    //  생성 초안
+    // =================================================================
+
+    class MapDraft
+    {
+        public HashSet<Vector2Int> cells = new HashSet<Vector2Int>();
+        public HashSet<(Vector2Int, Vector2Int)> edges = new HashSet<(Vector2Int, Vector2Int)>();
+        public Dictionary<Vector2Int, Vector2Int> parent = new Dictionary<Vector2Int, Vector2Int>(); // 트리 부모
+        public Vector2Int start;
+        public Vector2Int stairsCell;
+        public HashSet<Vector2Int> stairPath = new HashSet<Vector2Int>(); // 시작→계단 트리 경로 (양 끝 포함)
+        public Dictionary<Vector2Int, NodeContent> content = new Dictionary<Vector2Int, NodeContent>();
+    }
+
+    static MapDraft TryGenerate(System.Random rng, Config cfg)
+    {
+        var m = new MapDraft();
+        int targetRooms = rng.Next(cfg.minRoomCount, cfg.maxRoomCount + 1);
+
+        // ---- 격자 위 랜덤 트리 성장 (프림 방식: 기존 방 중 하나에서 빈 이웃으로 확장) ----
+        m.start = new Vector2Int(rng.Next(cfg.gridWidth), 0);
+        m.cells.Add(m.start);
+        var growable = new List<Vector2Int> { m.start };
+
         int guard = 0;
-        while (cells.Count < targetCells && guard++ < 20000)
+        while (m.cells.Count < targetRooms && guard++ < 500)
         {
-            var next = cur + Dirs[rng.Next(4)];
-            if (next.x < 0 || next.x >= cfg.gridWidth || next.y < 0 || next.y >= cfg.gridHeight)
-                continue;
-            if (cells.Add(next))
-                edges.Add(EdgeKey(cur, next)); // 처음 방문한 셀 = 트리 간선 (연결 보장)
-            cur = next;
+            if (growable.Count == 0) return null; // 성장 불가 — 재시도
+            var from = growable[rng.Next(growable.Count)];
+
+            var free = new List<Vector2Int>();
+            foreach (var d in Dirs)
+            {
+                var n = from + d;
+                if (n.x >= 0 && n.x < cfg.gridWidth && n.y >= 0 && n.y < cfg.gridHeight && !m.cells.Contains(n))
+                    free.Add(n);
+            }
+            if (free.Count == 0) { growable.Remove(from); continue; }
+
+            var next = free[rng.Next(free.Count)];
+            m.cells.Add(next);
+            m.edges.Add(EdgeKey(from, next));
+            m.parent[next] = from;
+            growable.Add(next);
+        }
+        if (m.cells.Count < cfg.minRoomCount) return null;
+
+        // ---- 전원 일반 전투로 초기화 (시작 제외) ----
+        foreach (var c in m.cells)
+            m.content[c] = c == m.start ? NodeContent.None : NodeContent.NormalBattle;
+
+        // ---- 계단 배치: 전투 거리(경로상 전투 수 = 트리 깊이-1)가 허용 범위인 후보 (명세 6) ----
+        var depth = TreeDepths(m);
+        var stairCandidates = m.cells
+            .Where(c => c != m.start)
+            .Where(c => InRange(depth[c] - 1, cfg.minStairCombatDistance, cfg.maxStairCombatDistance))
+            .ToList();
+        if (stairCandidates.Count == 0) return null;
+
+        // 목표 구간(target~target+1, 즉 3~4)은 동순위 선호 → 분포가 한 값에 몰리지 않음.
+        // 구간 밖(2 또는 5~6)은 낮은 확률로만 선택됨 (명세 6.3: 빠르면 2, 늦으면 5~6)
+        var children = ChildCounts(m);
+        int Score(Vector2Int c)
+        {
+            int d = depth[c] - 1;
+            int band = (d >= cfg.targetStairCombatDistance && d <= cfg.targetStairCombatDistance + 1) ? 0
+                : Mathf.Min(Mathf.Abs(d - cfg.targetStairCombatDistance),
+                            Mathf.Abs(d - (cfg.targetStairCombatDistance + 1)));
+            return band * 2 + (children[c] == 0 ? 0 : 1);
+        }
+        int best = stairCandidates.Min(Score);
+        var bestCells = stairCandidates.Where(c => Score(c) == best).ToList();
+        m.stairsCell = bestCells[rng.Next(bestCells.Count)];
+        m.content[m.stairsCell] = NodeContent.Stairs;
+
+        // 시작→계단 트리 경로 기록 (엘리트/보물 배치 제외 구역 — 명세 11)
+        for (var c = m.stairsCell; ; c = m.parent[c])
+        {
+            m.stairPath.Add(c);
+            if (c == m.start) break;
         }
 
-        // ---- 2) 순환 간선 추가 (양방향 이동이라 우회/재방문 동선이 됨) ----
-        var loopCandidates = new List<(Vector2Int, Vector2Int)>();
-        foreach (var c in cells)
+        // ---- 엘리트: 계단 필수 경로 밖 선택 가지에만 (명세 11) ----
+        var offPath = m.cells.Where(c => !m.stairPath.Contains(c)).ToList();
+        Shuffle(offPath, rng);
+        int eliteCount = Mathf.Min(rng.Next(cfg.eliteMinCount, cfg.eliteMaxCount + 1), offPath.Count);
+        for (int i = 0; i < eliteCount; i++)
+            m.content[offPath[i]] = NodeContent.EliteBattle;
+
+        // ---- 보물: 경로 밖 막다른 가지 우선 — 단, 그런 잎 전부를 보물로 만들지 않음 (명세 12) ----
+        var leavesOffPath = offPath
+            .Where(c => children[c] == 0 && m.content[c] == NodeContent.NormalBattle)
+            .ToList();
+        Shuffle(leavesOffPath, rng);
+        int treasureCap = leavesOffPath.Count > 1 ? leavesOffPath.Count - 1 : leavesOffPath.Count; // "막다른 길=보물" 공식 방지
+        int treasureCount = Mathf.Min(rng.Next(cfg.treasureMinCount, cfg.treasureMaxCount + 1), treasureCap);
+        for (int i = 0; i < treasureCount; i++)
+            m.content[leavesOffPath[i]] = NodeContent.Treasure;
+
+        // ---- 조건부 재합류: 트리 거리가 충분히 다른 인접 방만 잇기 (명세 10) ----
+        if (rng.NextDouble() < cfg.rejoinPatternChance)
         {
-            var e = c + Dirs[3]; // East
-            var n = c + Dirs[0]; // North (중복 없이 절반 방향만 검사)
-            if (cells.Contains(e) && !edges.Contains(EdgeKey(c, e))) loopCandidates.Add(EdgeKey(c, e));
-            if (cells.Contains(n) && !edges.Contains(EdgeKey(c, n))) loopCandidates.Add(EdgeKey(c, n));
+            var rejoinCandidates = new List<(Vector2Int, Vector2Int)>();
+            foreach (var c in m.cells)
+                foreach (var d in new[] { Dirs[0], Dirs[3] }) // 중복 없이 절반 방향만
+                {
+                    var n = c + d;
+                    if (!m.cells.Contains(n) || m.edges.Contains(EdgeKey(c, n))) continue;
+                    if (TreeDistance(m, c, n) >= cfg.rejoinMinTreeDistance)
+                        rejoinCandidates.Add(EdgeKey(c, n));
+                }
+            if (rejoinCandidates.Count > 0)
+                m.edges.Add(rejoinCandidates[rng.Next(rejoinCandidates.Count)]);
         }
-        Shuffle(loopCandidates, rng);
-        for (int i = 0; i < Mathf.Min(cfg.extraLoopEdges, loopCandidates.Count); i++)
-            edges.Add(loopCandidates[i]);
 
-        // ---- 3) BFS 거리 계산 ----
-        var adj = BuildAdjacency(cells, edges);
-        var dist = Bfs(startCell, adj);
-        var stairsCell = cells.OrderByDescending(c => dist[c]).First();
+        return m;
+    }
 
-        // ---- 4) 노드 종류 배정 ----
-        var content = new Dictionary<Vector2Int, NodeContent>();
-        foreach (var c in cells) content[c] = NodeContent.NormalBattle;
-        content[startCell] = NodeContent.None;
-        content[stairsCell] = NodeContent.Stairs;
+    // =================================================================
+    //  품질 검증 (명세 16)
+    // =================================================================
 
-        var free = cells.Where(c => content[c] == NodeContent.NormalBattle).ToList();
+    static bool Validate(MapDraft m, Config cfg)
+    {
+        var children = ChildCounts(m);
+        var depth = TreeDepths(m);
 
-        // 보물: 막다른 길(간선 1개) 우선 — 없으면 아무 곳
-        var deadEnds = free.Where(c => adj[c].Count == 1).ToList();
-        Shuffle(deadEnds, rng); Shuffle(free, rng);
-        AssignFrom(content, NodeContent.Treasure, cfg.treasureCount, deadEnds, free);
+        // 계단 전투 거리: 최종 그래프(재합류 포함) 기준 최소 전투 경로로 재검사
+        int battles = MinBattlesToStairs(m);
+        if (!InRange(battles, cfg.minStairCombatDistance, cfg.maxStairCombatDistance)) return false;
 
-        // 엘리트: 시작에서 먼 절반 우선
-        free = cells.Where(c => content[c] == NodeContent.NormalBattle).ToList();
-        int farLine = dist[stairsCell] / 2;
-        var farCells = free.Where(c => dist[c] >= farLine).ToList();
-        Shuffle(farCells, rng); Shuffle(free, rng);
-        AssignFrom(content, NodeContent.EliteBattle, cfg.eliteCount, farCells, free);
+        // 계단까지 엘리트 강제 통과 금지 — 트리 경로에는 배치상 없음. 재합류로 생긴
+        // 대체 경로는 추가 선택지일 뿐이므로 트리 경로 무결성만 보장하면 됨.
+        foreach (var c in m.stairPath)
+            if (m.content[c] == NodeContent.EliteBattle) return false;
 
-        // 특수방 (시스템 추후 — cfg 기본 0)
-        free = cells.Where(c => content[c] == NodeContent.NormalBattle).ToList();
-        Shuffle(free, rng);
-        AssignFrom(content, NodeContent.Special, cfg.specialCount, free, null);
+        // 첫 의미 있는 분기: 전투 maxLinear회 내 (명세 8.1) — 시작 포함 얕은 분기 노드 존재
+        bool earlyBranch = m.cells.Any(c =>
+            children[c] >= 2 && (depth[c] == 0 ? 0 : depth[c] - 0) <= cfg.maxLinearRoomsBeforeBranch + 0
+            && depth[c] <= cfg.maxLinearRoomsBeforeBranch);
+        if (!earlyBranch) return false;
 
-        // ---- 5) LocationDefinition 생성 ----
+        // 사실상 선형 금지: 분기 노드 수 (명세 16)
+        int branchCount = m.cells.Count(c => children[c] >= 2);
+        if (branchCount < cfg.minBranchCount) return false;
+
+        // 계단 확보 후 남은 콘텐츠: 경로 밖 엘리트/보물 최소 1개 (명세 7)
+        bool remaining = m.cells.Any(c =>
+            !m.stairPath.Contains(c) &&
+            (m.content[c] == NodeContent.EliteBattle || m.content[c] == NodeContent.Treasure));
+        if (!remaining) return false;
+
+        return true;
+    }
+
+    /// <summary>시작→계단 최소 전투 횟수 (0/1 가중 BFS — 재합류 경로 포함 최종 그래프 기준)</summary>
+    static int MinBattlesToStairs(MapDraft m)
+    {
+        var adj = BuildAdjacency(m);
+        var cost = new Dictionary<Vector2Int, int> { [m.start] = 0 };
+        var dq = new LinkedList<Vector2Int>();
+        dq.AddFirst(m.start);
+        while (dq.Count > 0)
+        {
+            var c = dq.First.Value; dq.RemoveFirst();
+            foreach (var n in adj[c])
+            {
+                bool isBattle = m.content[n] == NodeContent.NormalBattle || m.content[n] == NodeContent.EliteBattle;
+                int w = isBattle ? 1 : 0;
+                int nc = cost[c] + w;
+                if (cost.TryGetValue(n, out int old) && old <= nc) continue;
+                cost[n] = nc;
+                if (w == 0) dq.AddFirst(n); else dq.AddLast(n);
+            }
+        }
+        return cost.TryGetValue(m.stairsCell, out int r) ? r : int.MaxValue;
+    }
+
+    // =================================================================
+    //  Region 조립
+    // =================================================================
+
+    static RegionDefinition BuildRegion(MapDraft m, int floorIndex, Config cfg, System.Random rng,
+        out LocationDefinition start, out LocationDefinition stairs)
+    {
         var locs = new Dictionary<Vector2Int, LocationDefinition>();
-        foreach (var c in cells)
-            locs[c] = MakeLocation(floorIndex, c, content[c], c == startCell && floorIndex == 0, cfg, rng);
+        foreach (var c in m.cells)
+            locs[c] = MakeLocation(floorIndex, c, m.content[c], c == m.start && floorIndex == 0, cfg, rng);
 
-        // ---- 6) 출구 연결 (항상 양방향 — 재통과 가능) ----
-        foreach (var (a, b) in edges)
-            Connect(locs[a], locs[b], a, b);
+        foreach (var (a, b) in m.edges)
+            Connect(locs[a], locs[b], a, b); // 양방향 — 확보한 경로 재통행 (명세 3.1)
 
         var region = ScriptableObject.CreateInstance<RegionDefinition>();
         region.id = $"floor_{floorIndex}";
         region.regionName = $"지하 {floorIndex + 1}층";
-        region.locations.AddRange(cells.OrderBy(c => c.y).ThenBy(c => c.x).Select(c => locs[c]));
+        region.locations.AddRange(m.cells.OrderBy(c => c.y).ThenBy(c => c.x).Select(c => locs[c]));
 
-        start = locs[startCell];
-        stairs = locs[stairsCell];
+        start = locs[m.start];
+        stairs = locs[m.stairsCell];
         return region;
     }
-
-    // =================================================================
-    //  내부
-    // =================================================================
 
     static LocationDefinition MakeLocation(int floor, Vector2Int cell, NodeContent node, bool isRunStart,
         Config cfg, System.Random rng)
@@ -194,7 +328,7 @@ public static class MapGenerator
 
         switch (node)
         {
-            case NodeContent.None: // 층 시작 노드
+            case NodeContent.None:
                 loc.displayName = floor == 0 ? "던전 입구" : $"지하 {floor + 1}층 입구";
                 loc.type = LocationType.Field;
                 loc.previewText = "잠시 숨을 고를 수 있을 것 같다";
@@ -207,7 +341,7 @@ public static class MapGenerator
                 loc.type = LocationType.Field;
                 loc.previewText = Pick(NormalPreviews, rng);
                 loc.hasBattle = true;
-                loc.canEvent = true;      // 특정 이벤트로 재전투 발생 가능 (판정은 MapRunState)
+                loc.canEvent = true;      // 특수 기믹 재전투는 이벤트 시스템에서 (명세 3.2)
                 loc.canDiscovery = true;
                 break;
 
@@ -230,23 +364,18 @@ public static class MapGenerator
             case NodeContent.Stairs:
                 loc.displayName = "내려가는 계단";
                 loc.type = LocationType.Landmark;
-                loc.previewText = "어둠 속으로 계단이 이어진다 — 귀환하거나 더 내려갈 수 있다";
+                loc.previewText = "어둠 속으로 계단이 이어진다";
                 loc.hasBattle = false;
                 loc.fixedFunction = LocationFunction.Stairs;
-                break;
-
-            case NodeContent.Special:
-                loc.displayName = Pick(SpecialNames, rng);
-                loc.type = LocationType.Exploration;
-                loc.previewText = "설명하기 어려운 무언가가 있다";
-                loc.hasBattle = false;
-                loc.hasDedicatedEvent = true; // 시스템 추후
                 break;
         }
         return loc;
     }
 
-    /// <summary>a↔b 양방향 출구 설정 (격자 인접 전제).</summary>
+    // =================================================================
+    //  그래프 도구
+    // =================================================================
+
     static void Connect(LocationDefinition la, LocationDefinition lb, Vector2Int a, Vector2Int b)
     {
         var d = b - a;
@@ -256,52 +385,61 @@ public static class MapGenerator
         else if (d == Dirs[3]) { la.east = lb; lb.west = la; }
     }
 
-    static void AssignFrom(Dictionary<Vector2Int, NodeContent> content, NodeContent value, int count,
-        List<Vector2Int> preferred, List<Vector2Int> fallback)
+    static Dictionary<Vector2Int, List<Vector2Int>> BuildAdjacency(MapDraft m)
     {
-        int assigned = 0;
-        foreach (var c in preferred)
-        {
-            if (assigned >= count) return;
-            if (content[c] == NodeContent.NormalBattle) { content[c] = value; assigned++; }
-        }
-        if (fallback == null) return;
-        foreach (var c in fallback)
-        {
-            if (assigned >= count) return;
-            if (content[c] == NodeContent.NormalBattle) { content[c] = value; assigned++; }
-        }
-    }
-
-    static Dictionary<Vector2Int, List<Vector2Int>> BuildAdjacency(
-        HashSet<Vector2Int> cells, HashSet<(Vector2Int, Vector2Int)> edges)
-    {
-        var adj = cells.ToDictionary(c => c, _ => new List<Vector2Int>());
-        foreach (var (a, b) in edges) { adj[a].Add(b); adj[b].Add(a); }
+        var adj = m.cells.ToDictionary(c => c, _ => new List<Vector2Int>());
+        foreach (var (a, b) in m.edges) { adj[a].Add(b); adj[b].Add(a); }
         return adj;
     }
 
-    static Dictionary<Vector2Int, int> Bfs(Vector2Int start, Dictionary<Vector2Int, List<Vector2Int>> adj)
+    /// <summary>트리 깊이 (시작 = 0) — 부모 체인 기준</summary>
+    static Dictionary<Vector2Int, int> TreeDepths(MapDraft m)
     {
-        var dist = new Dictionary<Vector2Int, int> { [start] = 0 };
-        var q = new Queue<Vector2Int>();
-        q.Enqueue(start);
-        while (q.Count > 0)
+        var depth = new Dictionary<Vector2Int, int> { [m.start] = 0 };
+        foreach (var c in m.cells)
         {
-            var c = q.Dequeue();
-            foreach (var n in adj[c])
-                if (!dist.ContainsKey(n)) { dist[n] = dist[c] + 1; q.Enqueue(n); }
+            if (depth.ContainsKey(c)) continue;
+            var chain = new List<Vector2Int>();
+            var cur = c;
+            while (!depth.ContainsKey(cur)) { chain.Add(cur); cur = m.parent[cur]; }
+            int d = depth[cur];
+            for (int i = chain.Count - 1; i >= 0; i--) depth[chain[i]] = ++d;
         }
-        return dist;
+        return depth;
+    }
+
+    /// <summary>트리 기준 자식 수 (잎 판정용)</summary>
+    static Dictionary<Vector2Int, int> ChildCounts(MapDraft m)
+    {
+        var counts = m.cells.ToDictionary(c => c, _ => 0);
+        foreach (var kv in m.parent) counts[kv.Value]++;
+        return counts;
+    }
+
+    /// <summary>두 방의 트리 경로 거리 (재합류 후보 판정용)</summary>
+    static int TreeDistance(MapDraft m, Vector2Int a, Vector2Int b)
+    {
+        var pathA = new List<Vector2Int>();
+        for (var c = a; ; c = m.parent[c]) { pathA.Add(c); if (c == m.start) break; }
+        var indexA = new Dictionary<Vector2Int, int>();
+        for (int i = 0; i < pathA.Count; i++) indexA[pathA[i]] = i;
+
+        int up = 0;
+        for (var c = b; ; c = m.parent[c], up++)
+        {
+            if (indexA.TryGetValue(c, out int i)) return i + up;
+            if (c == m.start) break;
+        }
+        return int.MaxValue;
     }
 
     static (Vector2Int, Vector2Int) EdgeKey(Vector2Int a, Vector2Int b)
     {
-        // 정렬된 키로 저장해 (a,b)/(b,a) 중복 방지
         bool swap = a.y > b.y || (a.y == b.y && a.x > b.x);
         return swap ? (b, a) : (a, b);
     }
 
+    static bool InRange(int v, int min, int max) => v >= min && v <= max;
     static string Pick(string[] pool, System.Random rng) => pool[rng.Next(pool.Length)];
 
     static void Shuffle<T>(List<T> list, System.Random rng)
