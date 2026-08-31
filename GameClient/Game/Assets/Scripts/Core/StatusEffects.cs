@@ -84,6 +84,28 @@ public class StatusEffects : MonoBehaviour
         }
     }
 
+    // ---------- 받는 피해 (장비 명세 v1.2 §6: 감소는 전 출처 단일 합산 → 75% 상한) ----------
+
+    /// <summary>버프성 받는 피해 '감소' 기여 합 — 계수 m(<1)을 (1-m)로 환산해 TotalDR에 합산.</summary>
+    public float SumDamageReduction()
+    {
+        float sum = 0f;
+        foreach (var m in mods)
+            if (m.kind == Kind.DamageTaken && m.value < 1f)
+                sum += 1f - m.value;
+        return sum;
+    }
+
+    /// <summary>받는 피해 '증가' 배수 곱 (디버프) — DR 합산과 별도로 곱연산.</summary>
+    public float DamageTakenIncreaseMultiplier()
+    {
+        float mult = 1f;
+        foreach (var m in mods)
+            if (m.kind == Kind.DamageTaken && m.value > 1f)
+                mult *= m.value;
+        return mult;
+    }
+
     // ---------- 보호막 (액티브 스펙 v2: 보호막 스킬) ----------
 
     /// <summary>보호막 부여 — 여러 장 중첩 가능, 각각 지속시간 만료 시 소멸.</summary>

@@ -47,7 +47,7 @@ public class SkillRunner : MonoBehaviour
         if (!AutoConditionMet()) return;
 
         Execute();
-        timer = skill.cooldown;
+        timer = skill.cooldown * CooldownFactor();
     }
 
     /// <summary>내려놓는 순간 Hero.Release가 호출 — 발동했으면 true, 아니면 그냥 재배치.</summary>
@@ -61,11 +61,15 @@ public class SkillRunner : MonoBehaviour
         if (hero.Status != null && hero.Status.IsStunned) return false;
 
         Execute();
-        timer = skill.cooldown;
+        timer = skill.cooldown * CooldownFactor();
         return true;
     }
 
     bool WeaponOk() => WeaponRules.Meets(hero.Weapon, skill.weaponRequirement);
+
+    /// <summary>장비 CDR 반영 계수 — 상한 30% (장비 명세 §5)</summary>
+    float CooldownFactor() =>
+        1f - Mathf.Clamp(hero.CooldownReductionPercent, 0f, 30f) / 100f;
 
     // ---------- 자동 발동 조건 ----------
 

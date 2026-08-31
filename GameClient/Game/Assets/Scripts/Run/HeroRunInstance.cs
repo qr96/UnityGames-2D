@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 /// <summary>
 /// 런 안에서의 영웅 1명 (정의 + 런 한정 상태).
@@ -60,6 +61,10 @@ public class HeroRunInstance
         Accumulate(weapon, type, ref flat, ref percent); // 무기의 랜덤 옵션도 일반 수정치로 합산
         foreach (var eq in equipment)
             Accumulate(eq, type, ref flat, ref percent);
+        // 기본공격 주기 감소 상한 30% (장비 명세 §5) — 감소 percent 합을 -30으로 clamp
+        if (type == StatType.AttackInterval)
+            percent = Mathf.Max(percent, -30f);
+
         return (baseValue + flat) * (1f + percent / 100f);
     }
 
@@ -85,6 +90,8 @@ public class HeroRunInstance
         {
             case StatType.AttackRange: return weapon != null ? weapon.attackRange : 0f;
             case StatType.AttackInterval: return weapon != null ? weapon.attackInterval : 1f;
+            case StatType.DamageReduction: return 0f;   // 기본치 없음 — 장비/특성/버프 기여만 (§6)
+            case StatType.CooldownReduction: return 0f; // 기본치 없음 — 장비 기여만 (§5)
         }
         return definition != null ? definition.GetBaseStat(type) : 0f;
     }

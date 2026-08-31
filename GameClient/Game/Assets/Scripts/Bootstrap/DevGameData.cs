@@ -121,28 +121,9 @@ public static class DevGameData
 
     public static EquipmentDatabase CreateEquipmentDatabase()
     {
-        var db = ScriptableObject.CreateInstance<EquipmentDatabase>();
-
-        // ---- 무기 (무기 스펙 v2 표 그대로 — 타입 고정 공격력 보정 없음) ----
-        db.items.Add(MakeWeapon("w_dagger", "단검", WeaponType.Dagger, AttackType.Melee,
-            range: 1.2f, interval: 0.65f));
-        db.items.Add(MakeWeapon("w_sword", "검", WeaponType.Sword, AttackType.Melee,
-            range: 1.5f, interval: 1.0f));
-        db.items.Add(MakeWeapon("w_greatsword", "대검", WeaponType.Greatsword, AttackType.Melee,
-            range: 1.8f, interval: 1.5f, aoeRadius: 1.0f)); // 소범위 반경 임시 1.0
-        db.items.Add(MakeWeapon("w_bow", "활", WeaponType.Bow, AttackType.Ranged,
-            range: 6.0f, interval: 1.2f, projectileSpeed: 11f));
-        db.items.Add(MakeWeapon("w_magictool", "마법 도구", WeaponType.MagicTool, AttackType.Ranged,
-            range: 4.5f, interval: 1.4f, projectileSpeed: 9f));
-
-        // ---- 일반 장비 (자유 슬롯) ----
-        db.items.Add(MakeEquip("armor", "사슬 갑옷", Mod(StatType.MaxHP, flat: 40f)));
-        db.items.Add(MakeEquip("boots", "바람의 신발", Mod(StatType.MoveSpeed, pct: 20f)));
-        db.items.Add(MakeEquip("charm", "맹공의 부적", Mod(StatType.Attack, pct: 10f)));
-        db.items.Add(MakeEquip("dice", "행운의 주사위", Mod(StatType.CritChance, flat: 4f)));
-        db.items.Add(MakeEquip("edge", "예리한 숫돌", Mod(StatType.CritDamage, flat: 20f)));
-
-        return db;
+        // 장비 명세 v1.2: 장비는 EquipmentGenerator가 드랍 시 절차 생성 —
+        // 고정 장비 목록은 폐기. DB는 레거시 호환(부트스트랩/에셋 빌더)용 빈 껍데기.
+        return ScriptableObject.CreateInstance<EquipmentDatabase>();
     }
 
     public static RunConfig CreateRunConfig()
@@ -150,31 +131,4 @@ public static class DevGameData
         return ScriptableObject.CreateInstance<RunConfig>(); // 필드 기본값 사용
     }
 
-    static WeaponDefinition MakeWeapon(string id, string name, WeaponType type, AttackType attackType,
-        float range, float interval, float aoeRadius = 0f, float projectileSpeed = 9f)
-    {
-        var w = ScriptableObject.CreateInstance<WeaponDefinition>();
-        w.id = id;
-        w.displayName = name;
-        w.weaponType = type;
-        w.attackType = attackType;
-        w.attackRange = range;
-        w.attackInterval = interval;
-        w.aoeRadius = aoeRadius;
-        w.projectileSpeed = projectileSpeed;
-        w.modifiers = new StatModifier[0]; // 랜덤 옵션은 장비 개편에서
-        return w;
-    }
-
-    static EquipmentDefinition MakeEquip(string id, string name, params StatModifier[] mods)
-    {
-        var e = ScriptableObject.CreateInstance<EquipmentDefinition>();
-        e.id = id;
-        e.displayName = name;
-        e.modifiers = mods;
-        return e;
-    }
-
-    static StatModifier Mod(StatType stat, float flat = 0f, float pct = 0f) =>
-        new StatModifier { stat = stat, flat = flat, percent = pct };
 }

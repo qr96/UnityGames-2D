@@ -45,6 +45,12 @@ public class RunManager : MonoBehaviour
     public int mapSeed;
     public MapGenerator.Config mapConfig; // null = 고정 맵 (하강 불가)
     int currentFloor;
+
+    [Header("장비 생성 (장비 명세 v1.2 — RewardLevel = 현재 층)")]
+    public EquipmentGenerator.Config equipConfig = new EquipmentGenerator.Config();
+
+    /// <summary>현재 층의 RewardLevel (1층 = RL 1)</summary>
+    public int RewardLevel => currentFloor + 1;
     public HeroDatabase heroDatabase;
     public WorldDefinition world;
     public BattleController battleController;
@@ -95,39 +101,36 @@ public class RunManager : MonoBehaviour
     }
 
     /// <summary>
-    /// ※ 임시 (무기 획득 경로 확정 전): 무기가 '없는' 영웅에게만 1회 지급.
-    /// 장비 영속 v1: 무기가 영웅에 영구 유지되므로 매 런 지급하면 복제됨 — 최초 1회만.
-    /// 각 영웅의 액티브 무기 조건에 맞는 무기를 우선 지급해 스킬 테스트가 가능하게 함.
+    /// ※ 임시 (무기 획득 흐름은 드랍이 담당하지만, 무기 없는 영웅은 기본 공격 불가라 최초 1회 지급):
+    /// 시작 영웅은 표 확정 무기, 랜덤 영웅은 액티브 조건에 맞는 무기를 RL1로 '생성'해 지급.
+    /// 장비 영속 v1: 무기가 영웅에 영구 유지되므로 무기가 '없는' 영웅에게만 지급 (복제 방지).
     /// </summary>
     void AssignStarterWeapons()
     {
-        var weapons = new List<WeaponDefinition>();
-        foreach (var e in equipmentPool)
-            if (e is WeaponDefinition w) weapons.Add(w);
-        if (weapons.Count == 0) return;
-
+        var rng = new System.Random();
         foreach (var h in Run.party)
         {
             if (h.weapon != null) continue; // 이미 보유 — 영속 유지 (재지급 = 복제 버그)
 
-            // 시작 영웅: 표에 확정된 무기 지급 (브란=검, 리나=활, 오웬=마법 도구)
+            WeaponType type;
             if (h.owned != null && h.owned.hasFixedWeapon)
             {
-                var fixedW = weapons.Find(w => w.weaponType == h.owned.fixedWeapon);
-                if (fixedW != null) { h.weapon = fixedW; continue; }
+                type = h.owned.fixedWeapon; // 시작 영웅: 브란=검, 리나=활, 오웬=마법 도구
             }
-
-            // 랜덤 영웅: 액티브 무기 조건에 맞는 무기 지급 (임시 — 장비 개편에서 대체)
-            var req = h.owned != null && h.owned.activeSkill != null
-                ? h.owned.activeSkill.weaponRequirement
-                : WeaponRequirement.None;
-
-            var matching = weapons.FindAll(w => WeaponRules.Meets(w, req));
-            var pickFrom = matching.Count > 0 ? matching : weapons;
-
-            int seed = 7;
-            foreach (char c in h.definition.id) seed = seed * 31 + c;
-            h.weapon = pickFrom[Mathf.Abs(seed) % pickFrom.Count]; // 직접 지급 (인벤토리 경유 X)
+            else
+            {
+                var req = h.owned != null && h.owned.activeSkill != null
+                    ? h.owned.activeSkill.weaponRequirement
+                    : WeaponRequirement.None;
+                switch (req)
+                {
+                    case WeaponRequirement.Bow: type = WeaponType.Bow; break;
+                    case WeaponRequirement.MagicTool: type = WeaponType.MagicTool; break;
+                    case WeaponRequirement.Melee: type = WeaponType.Sword; break;
+                    default: type = (WeaponType)rng.Next(5); break;
+                }
+            }
+            h.weapon = EquipmentGenerator.GenerateWeapon(type, rewardLevel: 1, special: false, equipConfig, rng);
         }
     }
 
@@ -195,11 +198,11 @@ public class RunManager : MonoBehaviour
             return;
         }
 
-        // 보물 (미회수): 기존 전리품 팝업 재사용 — 확인 시 Explore 복귀
+        // 보물 (미회수): 전투 없이 다량 획득 (던전 명세 — 3개/특별 3%)
         if (World.CanLoot(loc))
         {
             World.MarkLooted(loc);
-            GrantEquipmentDrops();
+            GrantEquipmentDrops(NodeContent.Treasure);
             SetPhase(RunPhase.Loot);
             return;
         }
@@ -298,7 +301,9 @@ public class RunManager : MonoBehaviour
             return;
         }
 
-        GrantEquipmentDrops();
+        // 획득처: 엘리트 2개/특별 8%, 일반 1개/특별 1% (던전 명세)
+        GrantEquipmentDrops(World.Current.nodeType == NodeContent.EliteBattle
+            ? NodeContent.EliteBattle : NodeContent.NormalBattle);
         SetPhase(RunPhase.Loot);
     }
 
@@ -340,13 +345,14 @@ public class RunManager : MonoBehaviour
         RecruitShop.Refresh(heroDatabase);               // 원정 종료 시 후보 3명 전체 교체
     }
 
-    void GrantEquipmentDrops()
+    /// <summary>장비 드랍 (장비 명세 v1.2): 획득처가 개수/특별 확률을, 현재 층(RewardLevel)이 깡스탯 범위를 결정.</summary>
+    void GrantEquipmentDrops(NodeContent source)
     {
         LastDrops.Clear();
-        if (equipmentPool.Count == 0) return;
-        for (int i = 0; i < config.equipmentDropsPerBattle; i++)
+        var rng = new System.Random();
+        var drops = EquipmentGenerator.GenerateDrops(source, RewardLevel, equipConfig, rng);
+        foreach (var item in drops)
         {
-            var item = equipmentPool[UnityEngine.Random.Range(0, equipmentPool.Count)];
             Run.inventory.Add(item);          // = 보관소 — 획득 즉시 영구 반영 (장비 영속 v1)
             Run.acquiredThisRun.Add(item);    // 전멸 시 소멸 대상 추적
             LastDrops.Add(item);

@@ -55,13 +55,24 @@ public abstract class Unit : MonoBehaviour
         return Status;
     }
 
+    /// <summary>
+    /// 피해 처리 (장비 명세 v1.2 §6~7 — 순서 고정):
+    ///   IncomingDamage → 받는 피해 증가(곱) → DamageReduction(전 출처 합산, 75% 상한) → 보호막 흡수 → HP
+    /// 보호막은 감소 계산 '이후'의 피해를 흡수한다.
+    /// </summary>
     public virtual void TakeDamage(float amount)
     {
         if (IsDead) return;
+
+        if (Status != null)
+            amount *= Status.DamageTakenIncreaseMultiplier(); // 증가(디버프/무모함 계열)는 별도 곱
+
+        float totalDR = Mathf.Clamp(CollectDamageReduction(), 0f, 0.75f); // 무적 방지 상한 (§6)
+        amount *= 1f - totalDR;
+
         if (Status != null)
         {
-            amount *= Status.Multiplier(StatusEffects.Kind.DamageTaken); // 철벽 등 피해감소
-            amount = Status.AbsorbDamage(amount); // 보호막이 먼저 흡수 (액티브 스펙 v2)
+            amount = Status.AbsorbDamage(amount); // 보호막 흡수 (§7)
             if (amount <= 0f)
             {
                 Flash(new Color(0.55f, 0.75f, 1f)); // 완전 흡수 — 보호막 색 피드백
@@ -72,6 +83,10 @@ public abstract class Unit : MonoBehaviour
         Flash(new Color(1f, 0.35f, 0.3f));
         if (IsDead) Die();
     }
+
+    /// <summary>받는 피해 감소 기여 합 (0.30 = 30%) — 파생 유닛이 장비/특성 기여를 더함.</summary>
+    protected virtual float CollectDamageReduction() =>
+        Status != null ? Status.SumDamageReduction() : 0f;
 
     public virtual void Heal(float amount)
     {

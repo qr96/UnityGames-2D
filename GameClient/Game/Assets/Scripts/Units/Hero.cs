@@ -45,15 +45,28 @@ public class Hero : Unit
         * (Status != null ? Status.Multiplier(StatusEffects.Kind.Damage) : 1f)
         * (traits != null ? traits.AttackMult : 1f);
 
-    /// <summary>특성 받는 피해 배수 적용 (끈질김/전우애/수호자/무모함)</summary>
+    /// <summary>무모함 등 '받는 피해 증가'는 DR 합산과 별도 곱 (장비 명세 §6)</summary>
     public override void TakeDamage(float amount)
     {
-        if (traits != null) amount *= traits.TakenMult;
+        if (traits != null) amount *= traits.TakenIncreaseMult;
         base.TakeDamage(amount);
     }
 
+    /// <summary>TotalDR 합산 (장비 명세 §6): 버프 + 장비 DAMAGE_REDUCTION + 특성 — 상한 75%는 Unit이 적용</summary>
+    protected override float CollectDamageReduction()
+    {
+        float sum = base.CollectDamageReduction(); // 버프성 감소
+        sum += equipDamageReduction / 100f;        // 장비 옵션 (%)
+        if (traits != null) sum += traits.DamageReductionSum; // 특성 (끈질김/전우애/수호자)
+        return sum;
+    }
+
+    /// <summary>액티브 쿨다운 감소 % (장비 CDR — 30% 상한은 SkillRunner가 적용)</summary>
+    public float CooldownReductionPercent { get; private set; }
+
     // 전투 시작 시 캐시되는 최종 스탯 (장비 반영)
     float attackPower;
+    float equipDamageReduction; // 장비 DAMAGE_REDUCTION 합 (%)
     float critChance;   // % (영웅 스펙 v2 — 생성 시 굴림, 레벨 성장 없음)
     float critDamage;   // % (140 = 1.4배)
     float basicAttackPercent = 100f;
@@ -97,6 +110,8 @@ public class Hero : Unit
         attackPower = instance.GetStat(def.basicAttackPowerStat);
         critChance = instance.GetStat(StatType.CritChance);
         critDamage = instance.GetStat(StatType.CritDamage);
+        equipDamageReduction = instance.GetStat(StatType.DamageReduction);       // §6 — TotalDR 기여
+        CooldownReductionPercent = instance.GetStat(StatType.CooldownReduction); // §5 — 상한 30%
         basicAttackPercent = def.basicAttackPercent;
         attackRange = instance.GetStat(StatType.AttackRange);
         attackInterval = Mathf.Max(0.05f, instance.GetStat(StatType.AttackInterval));
