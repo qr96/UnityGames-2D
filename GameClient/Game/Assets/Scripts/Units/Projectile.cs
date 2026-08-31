@@ -11,14 +11,17 @@ public class Projectile : MonoBehaviour
     Vector3 lastTargetPos;
     float damage;
     float speed;
-    System.Action<Unit> onHit; // 명중 시 추가 효과 (독 등)
+    System.Action<Unit> onHit;  // 명중 후 '생존' 시 추가 효과 (독 등 — 시체에 걸지 않음)
+    System.Action<Unit> onKill; // 명중으로 '처치' 시 (처치 크레딧, 처치 시에도 필요한 폭발 등)
 
-    public void Init(Unit target, float damage, float speed, System.Action<Unit> onHit = null)
+    public void Init(Unit target, float damage, float speed,
+        System.Action<Unit> onHit = null, System.Action<Unit> onKill = null)
     {
         this.target = target;
         this.damage = damage;
         this.speed = speed;
         this.onHit = onHit;
+        this.onKill = onKill;
         lastTargetPos = target != null ? target.transform.position : transform.position;
     }
 
@@ -41,7 +44,8 @@ public class Projectile : MonoBehaviour
             if (targetAlive)
             {
                 target.TakeDamage(damage);
-                if (!target.IsDead) onHit?.Invoke(target);
+                if (target.IsDead) onKill?.Invoke(target);
+                else onHit?.Invoke(target);
             }
             Destroy(gameObject);
         }

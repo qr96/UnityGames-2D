@@ -156,7 +156,8 @@ public class SkillRunner : MonoBehaviour
                     UnitFactory.SpawnProjectile(hero.transform.position, target,
                         hero.AttackPower * skill.damagePercent / 100f
                             * hero.DamageMultVsTarget(target),
-                        speed: 14f, new Color(1f, 0.45f, 0.35f), onHit: null);
+                        speed: 14f, new Color(1f, 0.45f, 0.35f),
+                        onHit: null, onKill: _ => hero.NotifyKill()); // 처치 크레딧
                     break;
                 }
 
@@ -167,21 +168,23 @@ public class SkillRunner : MonoBehaviour
                     if (target == null || target.IsDead) break;
                     float dmg = hero.AttackPower * skill.damagePercent / 100f;
                     float splash = skill.radius;
+                    // 폭발은 본체 명중 대상의 생사와 무관하게 발생 — onHit(생존)/onKill(처치) 양쪽에 연결
+                    System.Action<Unit> explode = u =>
+                    {
+                        foreach (Unit e in UnitRegistry.GetAll(Team.Enemy).ToArray())
+                            if (e != u && !e.IsDead &&
+                                Vector2.Distance(e.transform.position, u.transform.position) <= splash)
+                            {
+                                e.TakeDamage(dmg * hero.DamageMultVsTarget(e));
+                                if (e.IsDead) hero.NotifyKill();
+                            }
+                        SpawnFlash(u.transform.position, splash * 2f,
+                            new Color(1f, 0.45f, 0.15f, 0.5f), 0.3f);
+                    };
                     UnitFactory.SpawnProjectile(hero.transform.position, target,
                         dmg * hero.DamageMultVsTarget(target), speed: 10f, new Color(1f, 0.5f, 0.2f),
-                        onHit: u =>
-                        {
-                            // 주변 적 동일 피해 (명중 대상 제외 — 대상은 투사체 피해로 이미 타격)
-                            foreach (Unit e in UnitRegistry.GetAll(Team.Enemy).ToArray())
-                                if (e != u && !e.IsDead &&
-                                    Vector2.Distance(e.transform.position, u.transform.position) <= splash)
-                                {
-                                    e.TakeDamage(dmg * hero.DamageMultVsTarget(e));
-                                    if (e.IsDead) hero.NotifyKill();
-                                }
-                            SpawnFlash(u.transform.position, splash * 2f,
-                                new Color(1f, 0.45f, 0.15f, 0.5f), 0.3f);
-                        });
+                        onHit: explode,
+                        onKill: u => { hero.NotifyKill(); explode(u); }); // 본체 처치 크레딧 + 폭발 유지
                     break;
                 }
 

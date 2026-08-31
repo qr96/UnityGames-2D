@@ -266,7 +266,8 @@ public class Hero : Unit
 
         if (attackType == AttackType.Ranged)
         {
-            UnitFactory.SpawnProjectile(transform.position, enemy, damage, projectileSpeed, projectileColor, onHit);
+            UnitFactory.SpawnProjectile(transform.position, enemy, damage, projectileSpeed, projectileColor,
+                onHit, onKill: _ => NotifyKill()); // 처치 크레딧 (BLOODTHIRST)
         }
         else
         {
