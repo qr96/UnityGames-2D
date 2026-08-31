@@ -21,6 +21,9 @@ public static class SortieData
             if (!string.IsNullOrEmpty(id)) selectedHeroIds.Add(id);
     }
 
+    /// <summary>출발 층 번호 (던전 명세: 1층 또는 개방된 진입 포인트) — 출정 시 로비가 설정</summary>
+    public static int startFloor = 1;
+
     public static void Clear() => selectedHeroIds.Clear();
 
     /// <summary>저장된 id들을 영웅 정의로 변환 (구 방식 — 정의 id 기반 로비 호환용)</summary>

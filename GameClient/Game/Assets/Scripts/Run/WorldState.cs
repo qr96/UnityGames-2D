@@ -33,6 +33,9 @@ public class WorldState
     /// <summary>확보한 계단방 (하강 목적지 결정용)</summary>
     public LocationDefinition SecuredStairs { get; private set; }
 
+    /// <summary>이번 원정에서 외부 진입 포인트에 도달했는가 — 개방 즉시 귀환 가능 (던전 명세)</summary>
+    public bool EntryPointReached { get; private set; }
+
     public WorldState(WorldDefinition world, LocationDefinition start)
     {
         this.world = world;
@@ -59,6 +62,10 @@ public class WorldState
             StairsSecured = true;
             SecuredStairs = loc;
         }
+
+        // 외부 진입 포인트: 도달 즉시 귀환 가능 (영구 개방 기록은 RunManager가 DungeonProgress에)
+        if (loc.fixedFunction == LocationFunction.EntryPoint)
+            EntryPointReached = true;
 
         // 전투 없는 장소(또는 이미 클리어한 장소)는 클리어 절차가 없으므로 방문만으로 인접 노출
         if (!loc.hasBattle || IsBattleCleared(loc))

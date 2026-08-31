@@ -23,6 +23,7 @@ public enum LocationFunction
     Rest,     // 휴식: 생존자 완전 회복 (예배당/야영지)
     Shop,     // 상점 (시스템 추후)
     Stairs,   // 내려가는 계단 — 도착 시 [귀환 / 내려가기] 선택 (내려가기 = descendTo로 이동)
+    EntryPoint, // 외부 진입 포인트 — 도달 즉시 영구 개방 + 귀환 가능, 이후 원정 시작 지점 (던전 명세)
 }
 
 /// <summary>
@@ -37,4 +38,5 @@ public enum NodeContent
     Treasure,     // 보물
     Stairs,       // 내려가는 계단
     Special,      // 특수방 (시스템 추후 — 생성기에서 배치만 지원)
+    EntryPoint,   // 외부 진입 포인트 (마일스톤 층 — 던전 명세)
 }

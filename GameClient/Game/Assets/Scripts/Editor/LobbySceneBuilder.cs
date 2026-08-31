@@ -247,6 +247,42 @@ public static class LobbySceneBuilder
         Debug.Log("[LobbySceneBuilder] 출정 UI 생성 완료.");
     }
 
+    [MenuItem("Tools/GrabProto/로비 출발 지점 UI 생성")]
+    public static void BuildStartFloorUI()
+    {
+        font = LoadFont();
+
+        var sortie = Object.FindFirstObjectByType<SortiePanel>(FindObjectsInactive.Include);
+        if (sortie == null)
+        {
+            EditorUtility.DisplayDialog("출발 지점 UI", "SortiePanel이 없습니다. 먼저 [로비 씬 구성]을 실행하세요.", "확인");
+            return;
+        }
+        if (sortie.startFloorText != null || sortie.transform.Find("StartFloorButton") != null)
+        {
+            EditorUtility.DisplayDialog("출발 지점 UI", "이미 출발 지점 버튼이 있습니다.", "확인");
+            return;
+        }
+
+        Canvas canvas = sortie.GetComponentInParent<Canvas>(true);
+        UpdateUiScale(canvas);
+
+        // 출발 층 순환 버튼 — 출발 버튼 왼쪽 하단에 배치
+        Button floorBtn = MakeButton(sortie.transform, "StartFloorButton",
+            "출발: 지하 1층 (입구)", new Color(0.30f, 0.34f, 0.48f), S(26f));
+        var frt = floorBtn.GetComponent<RectTransform>();
+        frt.anchorMin = frt.anchorMax = new Vector2(0f, 0f);
+        frt.pivot = new Vector2(0f, 0f);
+        frt.anchoredPosition = new Vector2(S(30f), S(30f));
+        frt.sizeDelta = new Vector2(S(430f), S(90f));
+        Wire(floorBtn, sortie, nameof(SortiePanel.OnClickCycleStartFloor));
+
+        sortie.startFloorText = floorBtn.GetComponentInChildren<Text>(true);
+        EditorUtility.SetDirty(sortie);
+        EditorSceneManager.MarkSceneDirty(sortie.gameObject.scene);
+        Debug.Log("[LobbySceneBuilder] 출발 지점 버튼 생성 완료.");
+    }
+
     [MenuItem("Tools/GrabProto/로비 영입 UI 생성")]
     public static void BuildRecruitUI()
     {

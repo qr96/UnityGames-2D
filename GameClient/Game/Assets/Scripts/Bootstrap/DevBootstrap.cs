@@ -66,10 +66,13 @@ public class DevBootstrap : MonoBehaviour
         else if (useRandomMap)
         {
             int seed = mapSeed != 0 ? mapSeed : Random.Range(1, int.MaxValue);
-            Debug.Log($"[DevBootstrap] 랜덤 맵 생성 — seed={seed} (1층, 이후 층은 하강 시 생성)");
-            runManager.world = MapGenerator.GenerateWorld(seed, mapConfig);
+            // 출발 층: 로비 출정이 설정한 값 (1층 또는 개방된 진입 포인트 — 던전 명세)
+            int startFloor = Mathf.Clamp(SortieData.startFloor, 1, mapConfig.maxFloor);
+            Debug.Log($"[DevBootstrap] 랜덤 맵 생성 — seed={seed}, 출발 지하 {startFloor}층 (이후 층은 하강 시 생성)");
+            runManager.world = MapGenerator.GenerateWorld(seed, mapConfig, startFloor);
             runManager.mapSeed = seed;
             runManager.mapConfig = mapConfig; // 하강 시 다음 층 생성용 (명세 22)
+            runManager.startFloorNumber = startFloor;
         }
         else
         {

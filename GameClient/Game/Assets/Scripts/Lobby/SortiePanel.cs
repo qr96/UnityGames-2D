@@ -21,6 +21,7 @@ public class SortiePanel : MonoBehaviour
     public GameObject entryTemplate;
     public Text countText;
     public Button departButton;
+    public Text startFloorText; // 출발 층 표시 (버튼 라벨 — 던전 명세: 개방된 진입 포인트 선택)
 
     static readonly Color NormalColor = new Color(0.16f, 0.20f, 0.30f);
     static readonly Color SelectedColor = new Color(0.22f, 0.62f, 0.40f);
@@ -43,6 +44,7 @@ public class SortiePanel : MonoBehaviour
 
         gameObject.SetActive(true);
         selected.Clear();
+        startFloorIndex = 0; // 열 때마다 1층부터 (기본)
         RebuildList();
         RefreshVisuals();
 
@@ -72,8 +74,30 @@ public class SortiePanel : MonoBehaviour
         var ids = new List<string>();
         foreach (var hero in selected) ids.Add(hero.heroId); // 보유 영웅 고유 id (영입 스펙 v1)
         SortieData.Set(ids);
+        SortieData.startFloor = CurrentStartFloor(); // 출발 층 (1층 또는 개방된 진입 포인트)
 
         SceneManager.LoadScene(gameSceneName);
+    }
+
+    // ---------- 출발 층 선택 (던전 명세: 개방된 외부 진입 포인트) ----------
+
+    int startFloorIndex;
+
+    int CurrentStartFloor()
+    {
+        var options = DungeonProgress.GetStartFloorOptions();
+        if (options.Count == 0) return 1;
+        startFloorIndex = Mathf.Clamp(startFloorIndex, 0, options.Count - 1);
+        return options[startFloorIndex];
+    }
+
+    /// <summary>출발 층 버튼 (빌더가 연결) — 개방된 진입 포인트를 순환 선택</summary>
+    public void OnClickCycleStartFloor()
+    {
+        var options = DungeonProgress.GetStartFloorOptions();
+        if (options.Count <= 1) return; // 1층뿐 — 선택지 없음
+        startFloorIndex = (startFloorIndex + 1) % options.Count;
+        RefreshVisuals();
     }
 
     // ---------- 내부 ----------
@@ -131,5 +155,12 @@ public class SortiePanel : MonoBehaviour
             countText.text = $"파티 선택  {selected.Count} / {maxCount}";
         if (departButton != null)
             departButton.interactable = selected.Count >= 1;
+        if (startFloorText != null)
+        {
+            int floor = CurrentStartFloor();
+            int optionCount = DungeonProgress.GetStartFloorOptions().Count;
+            startFloorText.text = floor == 1 ? "출발: 지하 1층 (입구)" : $"출발: 지하 {floor}층 (외부 통로)";
+            if (optionCount > 1) startFloorText.text += "  ▸"; // 선택지 있음 표시
+        }
     }
 }

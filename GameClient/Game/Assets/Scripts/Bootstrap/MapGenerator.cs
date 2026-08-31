@@ -26,6 +26,12 @@ public static class MapGenerator
     [System.Serializable]
     public class Config
     {
+        [Header("던전 구조 (던전 명세: 1F~최심부, 보스/진입 포인트)")]
+        [Tooltip("최심부 층 — 이 층에는 계단 대신 보스방 (프로토: 강화 엘리트 자리)")]
+        public int maxFloor = 40;
+        [Tooltip("외부 진입 포인트가 존재하는 마일스톤 층 (도달 즉시 영구 개방)")]
+        public int[] entryPointFloors = { 11, 21, 31 };
+
         [Header("방 수 (명세 14: 초기 10~14)")]
         public int minRoomCount = 10;
         public int maxRoomCount = 14;
@@ -80,12 +86,13 @@ public static class MapGenerator
     //  공개 API
     // =================================================================
 
-    /// <summary>1층만 생성한 월드 반환 — 다음 층은 하강 시 GenerateFloor로 이어 붙임 (명세 22).</summary>
-    public static WorldDefinition GenerateWorld(int seed, Config cfg = null)
+    /// <summary>시작 층 하나만 생성한 월드 반환 — 다음 층은 하강 시 GenerateFloor로 이어 붙임 (명세 22).
+    /// startFloorNumber: 1 = 지상 입구, 그 외 = 개방된 외부 진입 포인트 층 (던전 명세).</summary>
+    public static WorldDefinition GenerateWorld(int seed, Config cfg = null, int startFloorNumber = 1)
     {
         cfg ??= new Config();
         var world = ScriptableObject.CreateInstance<WorldDefinition>();
-        var region = GenerateFloor(0, seed, cfg, out var start, out _);
+        var region = GenerateFloor(startFloorNumber - 1, seed, cfg, out var start, out _);
         world.regions.Add(region);
         world.defaultStartLocation = start;
         return world;
@@ -97,20 +104,24 @@ public static class MapGenerator
     {
         cfg ??= new Config();
 
+        int floorNumber = floorIndex + 1;
+        bool isBossFloor = floorNumber >= cfg.maxFloor; // 최심부: 계단 없음, 보스방 (던전 명세)
+        bool isEntryFloor = System.Array.IndexOf(cfg.entryPointFloors, floorNumber) >= 0;
+
         for (int attempt = 0; attempt < Mathf.Max(1, cfg.maxGenerationAttempts); attempt++)
         {
             var rng = new System.Random(unchecked(seed * 486187739 + floorIndex * 16777619 + attempt * 92821));
-            var map = TryGenerate(rng, cfg);
-            if (map != null && Validate(map, cfg))
-                return BuildRegion(map, floorIndex, cfg, rng, out start, out stairs);
+            var map = TryGenerate(rng, cfg, isBossFloor, isEntryFloor);
+            if (map != null && Validate(map, cfg, isEntryFloor))
+                return BuildRegion(map, floorIndex, cfg, rng, isBossFloor, out start, out stairs);
         }
 
         // 모든 시도 실패 — 마지막 시도라도 사용 (연결성은 트리라 항상 보장됨)
         Debug.LogWarning($"[MapGenerator] {cfg.maxGenerationAttempts}회 내 품질 기준 미달 — 마지막 생성물 사용 (floor {floorIndex})");
         var fallbackRng = new System.Random(unchecked(seed * 486187739 + floorIndex * 16777619 + 999983));
         MapDraft fallback = null;
-        while (fallback == null) fallback = TryGenerate(fallbackRng, cfg);
-        return BuildRegion(fallback, floorIndex, cfg, fallbackRng, out start, out stairs);
+        while (fallback == null) fallback = TryGenerate(fallbackRng, cfg, isBossFloor, isEntryFloor);
+        return BuildRegion(fallback, floorIndex, cfg, fallbackRng, isBossFloor, out start, out stairs);
     }
 
     // =================================================================
@@ -128,7 +139,7 @@ public static class MapGenerator
         public Dictionary<Vector2Int, NodeContent> content = new Dictionary<Vector2Int, NodeContent>();
     }
 
-    static MapDraft TryGenerate(System.Random rng, Config cfg)
+    static MapDraft TryGenerate(System.Random rng, Config cfg, bool isBossFloor, bool isEntryFloor)
     {
         var m = new MapDraft();
         int targetRooms = rng.Next(cfg.minRoomCount, cfg.maxRoomCount + 1);
@@ -187,7 +198,8 @@ public static class MapGenerator
         int best = stairCandidates.Min(Score);
         var bestCells = stairCandidates.Where(c => Score(c) == best).ToList();
         m.stairsCell = bestCells[rng.Next(bestCells.Count)];
-        m.content[m.stairsCell] = NodeContent.Stairs;
+        // 최심부: 계단 대신 보스방 — 전투 있음, 거리 규칙은 계단과 동일하게 적용됨
+        m.content[m.stairsCell] = isBossFloor ? NodeContent.EliteBattle : NodeContent.Stairs;
 
         // 시작→계단 트리 경로 기록 (엘리트/보물 배치 제외 구역 — 명세 11)
         for (var c = m.stairsCell; ; c = m.parent[c])
@@ -196,12 +208,23 @@ public static class MapGenerator
             if (c == m.start) break;
         }
 
-        // ---- 엘리트: 계단 필수 경로 밖 선택 가지에만 (명세 11) ----
+        // ---- 외부 진입 포인트 (마일스톤 층): 경로 밖 배치 — 탐색해서 직접 발견 (던전 명세) ----
         var offPath = m.cells.Where(c => !m.stairPath.Contains(c)).ToList();
         Shuffle(offPath, rng);
-        int eliteCount = Mathf.Min(rng.Next(cfg.eliteMinCount, cfg.eliteMaxCount + 1), offPath.Count);
+        if (isEntryFloor)
+        {
+            var entryLeaves = offPath.Where(c => ChildCounts(m)[c] == 0 && m.content[c] == NodeContent.NormalBattle).ToList();
+            var entryPick = entryLeaves.Count > 0 ? entryLeaves[rng.Next(entryLeaves.Count)]
+                : offPath.FirstOrDefault(c => m.content[c] == NodeContent.NormalBattle);
+            if (entryPick == default && offPath.Count == 0) return null; // 배치 불가 — 재시도
+            m.content[entryPick] = NodeContent.EntryPoint;
+        }
+
+        // ---- 엘리트: 계단 필수 경로 밖 선택 가지에만 (명세 11) ----
+        var eliteCandidates = offPath.Where(c => m.content[c] == NodeContent.NormalBattle).ToList();
+        int eliteCount = Mathf.Min(rng.Next(cfg.eliteMinCount, cfg.eliteMaxCount + 1), eliteCandidates.Count);
         for (int i = 0; i < eliteCount; i++)
-            m.content[offPath[i]] = NodeContent.EliteBattle;
+            m.content[eliteCandidates[i]] = NodeContent.EliteBattle;
 
         // ---- 보물: 경로 밖 막다른 가지 우선 — 단, 그런 잎 전부를 보물로 만들지 않음 (명세 12) ----
         var leavesOffPath = offPath
@@ -236,7 +259,7 @@ public static class MapGenerator
     //  품질 검증 (명세 16)
     // =================================================================
 
-    static bool Validate(MapDraft m, Config cfg)
+    static bool Validate(MapDraft m, Config cfg, bool isEntryFloor)
     {
         var children = ChildCounts(m);
         var depth = TreeDepths(m);
@@ -247,8 +270,12 @@ public static class MapGenerator
 
         // 계단까지 엘리트 강제 통과 금지 — 트리 경로에는 배치상 없음. 재합류로 생긴
         // 대체 경로는 추가 선택지일 뿐이므로 트리 경로 무결성만 보장하면 됨.
+        // (보스 층은 목적지 자체가 강화 엘리트라 목적지 칸은 검사 제외)
         foreach (var c in m.stairPath)
-            if (m.content[c] == NodeContent.EliteBattle) return false;
+            if (c != m.stairsCell && m.content[c] == NodeContent.EliteBattle) return false;
+
+        // 마일스톤 층: 진입 포인트가 반드시 존재해야 함
+        if (isEntryFloor && !m.cells.Any(c => m.content[c] == NodeContent.EntryPoint)) return false;
 
         // 첫 의미 있는 분기: 전투 maxLinear회 내 (명세 8.1) — 시작 포함 얕은 분기 노드 존재
         bool earlyBranch = m.cells.Any(c =>
@@ -281,7 +308,8 @@ public static class MapGenerator
             var c = dq.First.Value; dq.RemoveFirst();
             foreach (var n in adj[c])
             {
-                bool isBattle = m.content[n] == NodeContent.NormalBattle || m.content[n] == NodeContent.EliteBattle;
+                bool isBattle = n != m.stairsCell && // 목적지(계단/보스방) 자체는 '도달 비용'에서 제외
+                    (m.content[n] == NodeContent.NormalBattle || m.content[n] == NodeContent.EliteBattle);
                 int w = isBattle ? 1 : 0;
                 int nc = cost[c] + w;
                 if (cost.TryGetValue(n, out int old) && old <= nc) continue;
@@ -297,11 +325,20 @@ public static class MapGenerator
     // =================================================================
 
     static RegionDefinition BuildRegion(MapDraft m, int floorIndex, Config cfg, System.Random rng,
-        out LocationDefinition start, out LocationDefinition stairs)
+        bool isBossFloor, out LocationDefinition start, out LocationDefinition stairs)
     {
         var locs = new Dictionary<Vector2Int, LocationDefinition>();
         foreach (var c in m.cells)
             locs[c] = MakeLocation(floorIndex, c, m.content[c], c == m.start && floorIndex == 0, cfg, rng);
+
+        // 최심부 보스방 마감 (프로토: 강화 엘리트 자리 — Landmark 승리 = 런 클리어 규칙에 걸림)
+        if (isBossFloor)
+        {
+            var boss = locs[m.stairsCell];
+            boss.displayName = "최심부";
+            boss.type = LocationType.Landmark; // BattleController: Landmark 배수 + 엘리트 배수 중첩 = 강화 엘리트
+            boss.previewText = "깊은 어둠 속에서 무언가 도사리고 있다";
+        }
 
         foreach (var (a, b) in m.edges)
             Connect(locs[a], locs[b], a, b); // 양방향 — 확보한 경로 재통행 (명세 3.1)
@@ -359,6 +396,14 @@ public static class MapGenerator
                 loc.previewText = Pick(TreasurePreviews, rng);
                 loc.hasBattle = false;
                 loc.canDiscovery = true;
+                break;
+
+            case NodeContent.EntryPoint:
+                loc.displayName = "봉인된 외부 통로";
+                loc.type = LocationType.Landmark;
+                loc.previewText = "바깥으로 이어지는 낡은 통로 — 열 수 있을 것 같다";
+                loc.hasBattle = false;
+                loc.fixedFunction = LocationFunction.EntryPoint;
                 break;
 
             case NodeContent.Stairs:

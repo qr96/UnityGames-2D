@@ -44,7 +44,9 @@ public class RunManager : MonoBehaviour
     [Header("랜덤 맵 (부트스트랩 주입 — 하강 시 다음 층을 그때 생성, 명세 22)")]
     public int mapSeed;
     public MapGenerator.Config mapConfig; // null = 고정 맵 (하강 불가)
-    int currentFloor;
+    [Tooltip("출발 층 번호 (1 = 지상 입구, 그 외 = 개방된 진입 포인트 — 부트스트랩 주입)")]
+    public int startFloorNumber = 1;
+    int currentFloor; // 0-based 층 인덱스 (층 번호 = currentFloor + 1)
 
     [Header("장비 생성 (장비 명세 v1.2 — RewardLevel = 현재 층)")]
     public EquipmentGenerator.Config equipConfig = new EquipmentGenerator.Config();
@@ -81,7 +83,7 @@ public class RunManager : MonoBehaviour
     {
         Run = new RunState(starters);
         Run.battleNumber = 0;
-        currentFloor = 0;
+        currentFloor = Mathf.Max(0, startFloorNumber - 1); // 진입 포인트 출발 시 해당 층부터 (RewardLevel 연동)
         AssignStarterWeapons(); // ※ 임시 — 무기 획득/생성 흐름은 장비 개편에서
         World = new WorldState(world, world.defaultStartLocation); // 시작 위치는 임시 (미확정)
         battleController.ClearField(); // 이전 런의 파티 정리
@@ -207,6 +209,13 @@ public class RunManager : MonoBehaviour
             return;
         }
 
+        // 외부 진입 포인트: 도달 즉시 영구 개방 (던전 명세 — 프로토: 개통 이벤트 생략 확정)
+        if (loc.fixedFunction == LocationFunction.EntryPoint)
+        {
+            if (DungeonProgress.Open(RewardLevel))
+                Debug.Log($"[RunManager] 외부 진입 포인트 개방 — 지하 {RewardLevel}층 (이후 출발 지점 선택 가능)");
+        }
+
         // 계단 포함 그 외: Explore — 계단은 도달 시점에 이미 확보됨(WorldState.MarkVisited)
         EnterExplore();
     }
@@ -215,13 +224,16 @@ public class RunManager : MonoBehaviour
     // 계단방에 도달하면 Secured (WorldState가 처리) — 이후 층 어디서든 [귀환]/[하강] 가능.
     // 백트래킹 없음: 클리어된 안전 경로로 계단까지 돌아갔다고 추상화 (명세 5.2·21).
 
-    /// <summary>귀환 가능 — 계단 확보 후 Explore 중이면 위치와 무관하게 언제든 (명세 5.2).</summary>
+    /// <summary>귀환 가능 — 계단 확보 '또는' 진입 포인트 개방 후 Explore 중이면 위치와 무관하게 (명세 5.2 + 던전 명세).</summary>
     public bool CanReturn =>
-        Phase == RunPhase.Explore && World != null && World.StairsSecured;
+        Phase == RunPhase.Explore && World != null
+        && (World.StairsSecured || World.EntryPointReached);
 
-    /// <summary>하강 가능 — 확보 + (다음 층이 이미 있거나 랜덤 맵이라 생성 가능).</summary>
+    /// <summary>하강 가능 — '계단' 확보 + (다음 층이 이미 있거나 랜덤 맵이라 생성 가능). 최심부는 계단이 없어 자연 차단.</summary>
     public bool CanDescend =>
-        CanReturn && (World.SecuredStairs.descendTo != null || mapConfig != null);
+        Phase == RunPhase.Explore && World != null && World.StairsSecured
+        && (World.SecuredStairs.descendTo != null
+            || (mapConfig != null && currentFloor + 2 <= mapConfig.maxFloor));
 
     /// <summary>[하강] — 다음 층을 이 시점에 생성해 이어 붙이고 이동 (명세 22).</summary>
     public void DescendStairs()
