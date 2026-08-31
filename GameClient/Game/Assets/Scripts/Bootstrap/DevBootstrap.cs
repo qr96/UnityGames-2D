@@ -45,9 +45,6 @@ public class DevBootstrap : MonoBehaviour
 
         // 설정: 에셋이 있으면 런타임 사본 사용 (플레이 중 변경이 에셋 원본을 더럽히지 않도록)
         RunConfig config = runConfig != null ? Instantiate(runConfig) : DevGameData.CreateRunConfig();
-        // ★ 영입 시스템 보류 중 (방식 미확정) — 확정되면 이 두 줄을 지우고 재활성화
-        config.recruitChances = 0;
-        config.recruitAfterBattle = new int[0];
         runManager.config = config;
 
         runManager.heroDatabase = heroDatabase != null ? heroDatabase : DevGameData.CreateHeroDatabase();

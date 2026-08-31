@@ -286,7 +286,7 @@ public class RunManager : MonoBehaviour
     {
         Run.battleNumber++;             // 이번 런에서 몇 번째 전투인지 (적 스케일링 기준)
         Run.inBattle = false;           // 배치 = '전투 사이' → 장비 변경 허용 (GDD 8)
-        battleController.SetupBattle(Run, config, World.Current);
+        battleController.SetupBattle(Run, config, World.Current, RewardLevel);
         SetPhase(RunPhase.Placement);
     }
 

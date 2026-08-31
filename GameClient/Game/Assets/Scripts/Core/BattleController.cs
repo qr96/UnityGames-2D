@@ -23,10 +23,6 @@ public class BattleController : MonoBehaviour
 
     readonly List<GameObject> spawned = new List<GameObject>();
 
-    // 엘리트 전투 임시 수치 — TODO: RunConfig 필드로 이동
-    const float EliteStatMultiplier = 1.5f;
-    const int EliteExtraEnemies = 2;
-
     RunConfig config;
     Vector3 arenaCenter;              // 전투장 중심 = 현재 장소의 월드 좌표
     LocationDefinition fieldLocation; // 현재 전장/파티가 서 있는 장소
@@ -39,7 +35,7 @@ public class BattleController : MonoBehaviour
     // ---------- 배치 단계 ----------
 
     /// <summary>영웅만 스폰하고 AI 정지 상태로 대기. RunManager가 Placement 진입 시 호출.</summary>
-    public void SetupBattle(RunState run, RunConfig config, LocationDefinition location)
+    public void SetupBattle(RunState run, RunConfig config, LocationDefinition location, int rewardLevel)
     {
         this.config = config;
         CombatActive = false;
@@ -54,17 +50,17 @@ public class BattleController : MonoBehaviour
         // 파티 스폰: 사망했던 영웅도 다음 전투에는 정상 참여 (GDD 4: 영구 사망 아님)
         SpawnParty(run);
 
-        // 이번 전투의 스폰 물량/강도 (전투 횟수 기반 스케일링)
-        int battleIdx = Mathf.Max(0, run.battleNumber - 1);
-        remainingToSpawn = config.baseEnemyCount + battleIdx * config.enemyCountGrowth;
-        statMultiplier = 1f + battleIdx * config.enemyStatGrowth;
+        // 이번 전투의 스폰 물량/강도 — 층(RewardLevel) 기반 (던전 명세: 깊이 = 난이도)
+        int floorIdx = Mathf.Max(0, rewardLevel - 1);
+        remainingToSpawn = Mathf.Min(config.maxEnemyCount,
+            Mathf.RoundToInt(config.baseEnemyCount + floorIdx * config.enemyCountPerFloor));
+        statMultiplier = 1f + floorIdx * config.enemyStatGrowthPerFloor;
         if (location != null && location.type == LocationType.Landmark)
-            statMultiplier *= config.landmarkStatMultiplier; // 보스 지역 강화
+            statMultiplier *= config.landmarkStatMultiplier; // 최심부 보스 강화
         if (location != null && location.nodeType == NodeContent.EliteBattle)
         {
-            // 엘리트 전투 (노드 규칙) — TODO: 수치는 RunConfig로 이동 (파일 확보 후)
-            remainingToSpawn += EliteExtraEnemies;
-            statMultiplier *= EliteStatMultiplier;
+            remainingToSpawn = Mathf.Min(config.maxEnemyCount, remainingToSpawn + config.eliteExtraEnemies);
+            statMultiplier *= config.eliteStatMultiplier;
         }
 
         // GDD 4: 포션은 전투당 N개 지급 (소모품 바에 오른쪽부터 표시)
@@ -177,9 +173,11 @@ public class BattleController : MonoBehaviour
             if (!CombatActive) return; // 예고 도중 교전이 끝났으면 등장 취소
 
             Enemy e = UnitFactory.SpawnEnemy("Slime", pos,
-                maxHP: 60f * statMultiplier,
-                dmg: 8f * statMultiplier,
-                range: 1f, interval: 1.2f, speed: 1.4f);
+                maxHP: config.enemyBaseHP * statMultiplier,
+                dmg: config.enemyBaseDamage * statMultiplier,
+                range: config.enemyAttackRange,
+                interval: config.enemyAttackInterval,
+                speed: config.enemyMoveSpeed);
             spawned.Add(e.gameObject);
         });
     }

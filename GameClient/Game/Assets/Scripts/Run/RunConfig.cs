@@ -1,26 +1,37 @@
 using UnityEngine;
 
-/// <summary>런 규칙 설정. GDD의 미정 수치는 전부 여기서 튜닝.</summary>
+/// <summary>런 규칙 설정. 미정 수치는 전부 여기서 튜닝.</summary>
 [CreateAssetMenu(menuName = "Game/Run Config", fileName = "RunConfig")]
 public class RunConfig : ScriptableObject
 {
-    [Header("영입 (GDD 6 — ※ 시스템 보류 중, DevBootstrap에서 0으로 꺼둠)")]
-    public int recruitChances = 2;
-    public int[] recruitAfterBattle = { 1, 2 }; // 몇 번째 전투 '승리 후' 영입 이벤트 발생
-    public int candidatesPerRecruit = 2;
+    [Header("전투 보상 / 포션 (수치 미정 → 튜닝값)")]
+    public int potionsPerBattle = 3;
 
-    [Header("월드")]
-    [Tooltip("랜드마크(보스 지역) 적 스탯 배수")]
+    [Header("적 기본 스탯 (1층 일반 기준 — 층 배수로 스케일)")]
+    public float enemyBaseHP = 35f;
+    public float enemyBaseDamage = 5f;
+    public float enemyAttackRange = 1f;
+    public float enemyAttackInterval = 1.2f;
+    public float enemyMoveSpeed = 1.4f;
+
+    [Header("적 스케일링 — 층(RewardLevel) 기반 (던전 명세: 깊이 = 난이도)")]
+    [Tooltip("1층 일반 전투의 총 마릿수")]
+    public int baseEnemyCount = 5;
+    [Tooltip("층당 마릿수 증가 (소수 허용 — 합산 후 반올림)")]
+    public float enemyCountPerFloor = 0.5f;
+    [Tooltip("마릿수 상한 (전투장 밀도 보호)")]
+    public int maxEnemyCount = 16;
+    [Tooltip("층당 적 스탯 증가 (0.15 = +15%/층)")]
+    public float enemyStatGrowthPerFloor = 0.15f;
+
+    [Header("전투 종류 배수")]
+    [Tooltip("엘리트 전투 — 스탯 배수 / 추가 마릿수")]
+    public float eliteStatMultiplier = 1.5f;
+    public int eliteExtraEnemies = 2;
+    [Tooltip("랜드마크(최심부 보스) 적 스탯 배수 — 엘리트 배수와 중첩")]
     public float landmarkStatMultiplier = 1.6f;
 
-    [Header("전투 보상 / 포션 (GDD 4·8, 수치 미정 → 튜닝값)")]
-    public int potionsPerBattle = 3;
-    public int equipmentDropsPerBattle = 2;
-
     [Header("적 스폰 — 전투마다 총 마릿수를 조금씩 랜덤 스폰")]
-    public int baseEnemyCount = 8;        // 첫 전투의 총 마릿수
-    public int enemyCountGrowth = 4;      // 전투 횟수당 총 마릿수 증가
-    public float enemyStatGrowth = 0.25f; // 전투 횟수당 적 스탯 +25%
     public float firstSpawnDelay = 0.8f;
     public float spawnInterval = 2.5f;
     public int spawnBatchMin = 1;
