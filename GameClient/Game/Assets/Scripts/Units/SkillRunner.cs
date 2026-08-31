@@ -109,6 +109,7 @@ public class SkillRunner : MonoBehaviour
     void Execute()
     {
         AnnounceSkillName();
+        hero.NotifyActiveCast(); // ACTIVE_STRIKE 재충전 (장비 명세 §11)
 
         switch (skill.kind)
         {
@@ -118,7 +119,8 @@ public class SkillRunner : MonoBehaviour
                     Unit target = hero.CurrentTarget;
                     if (target == null || target.IsDead) break;
                     target.TakeDamage(hero.AttackPower * skill.damagePercent / 100f
-                        * hero.TraitDamageMultVsTarget(target));
+                        * hero.DamageMultVsTarget(target));
+                    if (target.IsDead) hero.NotifyKill(); // 처치 크레딧 (BLOODTHIRST)
                     SpawnFlash(target.transform.position, target.radius * 2f + 0.5f,
                         new Color(1f, 0.75f, 0.3f, 0.55f), 0.22f);
                     break;
@@ -136,7 +138,10 @@ public class SkillRunner : MonoBehaviour
                         if (DistTo(u) > skill.radius) continue;
                         Vector2 to = (u.transform.position - hero.transform.position).normalized;
                         if (Vector2.Angle(dir, to) <= 60f)
-                            u.TakeDamage(dmg * hero.TraitDamageMultVsTarget(u));
+                        {
+                            u.TakeDamage(dmg * hero.DamageMultVsTarget(u));
+                            if (u.IsDead) hero.NotifyKill();
+                        }
                     }
                     SpawnFlash(hero.transform.position + (Vector3)(dir * skill.radius * 0.5f),
                         skill.radius, new Color(1f, 0.6f, 0.35f, 0.4f), 0.25f);
@@ -150,7 +155,7 @@ public class SkillRunner : MonoBehaviour
                     if (target == null || target.IsDead) break;
                     UnitFactory.SpawnProjectile(hero.transform.position, target,
                         hero.AttackPower * skill.damagePercent / 100f
-                            * hero.TraitDamageMultVsTarget(target),
+                            * hero.DamageMultVsTarget(target),
                         speed: 14f, new Color(1f, 0.45f, 0.35f), onHit: null);
                     break;
                 }
@@ -163,14 +168,17 @@ public class SkillRunner : MonoBehaviour
                     float dmg = hero.AttackPower * skill.damagePercent / 100f;
                     float splash = skill.radius;
                     UnitFactory.SpawnProjectile(hero.transform.position, target,
-                        dmg * hero.TraitDamageMultVsTarget(target), speed: 10f, new Color(1f, 0.5f, 0.2f),
+                        dmg * hero.DamageMultVsTarget(target), speed: 10f, new Color(1f, 0.5f, 0.2f),
                         onHit: u =>
                         {
                             // 주변 적 동일 피해 (명중 대상 제외 — 대상은 투사체 피해로 이미 타격)
                             foreach (Unit e in UnitRegistry.GetAll(Team.Enemy).ToArray())
                                 if (e != u && !e.IsDead &&
                                     Vector2.Distance(e.transform.position, u.transform.position) <= splash)
-                                    e.TakeDamage(dmg * hero.TraitDamageMultVsTarget(e));
+                                {
+                                    e.TakeDamage(dmg * hero.DamageMultVsTarget(e));
+                                    if (e.IsDead) hero.NotifyKill();
+                                }
                             SpawnFlash(u.transform.position, splash * 2f,
                                 new Color(1f, 0.45f, 0.15f, 0.5f), 0.3f);
                         });
@@ -183,7 +191,8 @@ public class SkillRunner : MonoBehaviour
                     Unit target = hero.CurrentTarget;
                     if (target == null || target.IsDead) break;
                     target.TakeDamage(hero.AttackPower * skill.damagePercent / 100f
-                        * hero.TraitDamageMultVsTarget(target));
+                        * hero.DamageMultVsTarget(target));
+                    if (target.IsDead) hero.NotifyKill();
                     SpawnFlash(target.transform.position, target.radius * 2f + 0.7f,
                         new Color(0.85f, 0.15f, 0.2f, 0.6f), 0.28f);
                     break;
@@ -229,8 +238,8 @@ public class SkillRunner : MonoBehaviour
                     foreach (Unit u in UnitRegistry.GetAll(Team.Enemy).ToArray())
                     {
                         if (DistTo(u) > skill.radius) continue;
-                        u.TakeDamage(dmg * hero.TraitDamageMultVsTarget(u));
-                        if (u.IsDead) continue;
+                        u.TakeDamage(dmg * hero.DamageMultVsTarget(u));
+                        if (u.IsDead) { hero.NotifyKill(); continue; }
                         Vector3 away = (u.transform.position - hero.transform.position).normalized;
                         if (away.sqrMagnitude < 0.001f) away = Vector3.up;
                         StartCoroutine(Knockback(u, away * skill.effectValue));

@@ -36,6 +36,9 @@ public static class UnitFactory
         if (!string.IsNullOrEmpty(traitId))
             go.AddComponent<TraitRunner>().Init(hero, traitId);
 
+        // 특별 장비 고유 효과 (장비 명세 §8~11) — 장착품은 전투 시작 시 집계
+        go.AddComponent<UniqueEffectRunner>().Init(hero);
+
         AddHealthBar(hero, new Color(0.3f, 1f, 0.4f));
         return hero;
     }

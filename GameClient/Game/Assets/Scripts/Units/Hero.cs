@@ -35,9 +35,27 @@ public class Hero : Unit
     TraitRunner traits;
     public void AttachTraits(TraitRunner runner) => traits = runner;
 
-    /// <summary>처형인 등 대상 조건 특성 배수 — 피해 지점에서 대상별로 적용</summary>
-    public float TraitDamageMultVsTarget(Unit target) =>
-        traits != null ? traits.DamageMultVsTarget(target) : 1f;
+    /// <summary>고유효과 구동기 (장비 명세 §8~11) — UniqueEffectRunner.Init이 연결. 없으면 중립.</summary>
+    UniqueEffectRunner uniques;
+    public void AttachUniques(UniqueEffectRunner runner) => uniques = runner;
+
+    /// <summary>
+    /// 대상별 피해 배수 — 스킬/기본 공격의 피해 지점에서 적용.
+    /// 특성(처형인)은 배수, 고유효과 증가분은 합연산 후 1회 곱 (§9). 치명타는 이 이후.
+    /// </summary>
+    public float DamageMultVsTarget(Unit target)
+    {
+        float mult = traits != null ? traits.DamageMultVsTarget(target) : 1f;
+        if (uniques != null)
+            mult *= 1f + (uniques.SelfDamageBonusPercent + uniques.ExecutionBonusPercent(target)) / 100f;
+        return mult;
+    }
+
+    /// <summary>적 처치 크레딧 (BLOODTHIRST) — 피해 지점에서 대상 사망 확인 후 호출</summary>
+    public void NotifyKill() => uniques?.NotifyKill();
+
+    /// <summary>액티브 발동 알림 (ACTIVE_STRIKE 재충전) — SkillRunner가 호출</summary>
+    public void NotifyActiveCast() => uniques?.OnActiveCast();
 
     /// <summary>스킬 피해 계산용 — 버프 계수 + 특성(자기/주변 조건) 배수가 반영된 현재 공격력</summary>
     public float AttackPower =>
@@ -58,6 +76,7 @@ public class Hero : Unit
         float sum = base.CollectDamageReduction(); // 버프성 감소
         sum += equipDamageReduction / 100f;        // 장비 옵션 (%)
         if (traits != null) sum += traits.DamageReductionSum; // 특성 (끈질김/전우애/수호자)
+        if (uniques != null) sum += uniques.DropGuardDR;      // DROP_GUARD (§8)
         return sum;
     }
 
@@ -224,9 +243,15 @@ public class Hero : Unit
     void Attack(Unit enemy)
     {
         float damage = AttackPower * basicAttackPercent / 100f;
-        damage *= TraitDamageMultVsTarget(enemy); // 처형인 (특성 스펙 v1)
 
-        // 치명타 (영웅 스펙 v2) — 기본 공격 피해에 적용 (스킬 치명타는 스킬 개편 시 결정)
+        // 주는 피해 증감 (§9 합연산: 특성 배수 × [고유효과 자기조건 + 처형(대상) + ACTIVE_STRIKE 소비]) — 치명타 이전
+        damage *= traits != null ? traits.DamageMultVsTarget(enemy) : 1f;
+        if (uniques != null)
+            damage *= 1f + (uniques.SelfDamageBonusPercent
+                + uniques.ExecutionBonusPercent(enemy)
+                + uniques.ConsumeActiveStrikePercent()) / 100f; // 다음 기본공격 1회 소비 (§11)
+
+        // 치명타 (영웅 스펙 v2) — 증감 이후 적용 (§9 순서)
         if (Random.value * 100f < critChance)
             damage *= critDamage / 100f;
 
@@ -246,7 +271,8 @@ public class Hero : Unit
         else
         {
             enemy.TakeDamage(damage);
-            if (!enemy.IsDead) onHit?.Invoke(enemy);
+            if (enemy.IsDead) NotifyKill(); // 처치 크레딧 (BLOODTHIRST)
+            else onHit?.Invoke(enemy);
 
             // 대검 소범위 (무기 스펙 v2): 대상 주변 반경의 적에게 동일 피해 (치명타 동일 적용)
             if (meleeAoeRadius > 0f)
@@ -255,7 +281,10 @@ public class Hero : Unit
                 foreach (Unit u in UnitRegistry.GetAll(Team.Enemy).ToArray())
                     if (u != enemy && !u.IsDead &&
                         Vector2.Distance(u.transform.position, center) <= meleeAoeRadius)
+                    {
                         u.TakeDamage(damage);
+                        if (u.IsDead) NotifyKill();
+                    }
             }
 
             // 흡혈 (광폭화 등) — 근접 즉시 타격에만 적용 (투사체 흡혈은 추후)
@@ -293,6 +322,9 @@ public class Hero : Unit
         // 내려놓기 액티브 (액티브 스펙 v2): 쿨 준비 + 무기 조건 충족이면 내려놓는 순간 발동
         var runner = GetComponent<SkillRunner>();
         if (runner != null) runner.TryTriggerOnRelease();
+
+        // DROP_FURY / DROP_GUARD: 내려놓는 순간 3초 갱신 (§10 — 누적 없음)
+        uniques?.OnRelease();
     }
 
     void UpdateGrabbed()
