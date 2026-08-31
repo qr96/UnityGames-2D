@@ -39,6 +39,21 @@ public static class HeroInfoText
             sb.AppendLine($"특성          {trait}");
             sb.AppendLine($"              {TraitCatalog.Description(hero.traitId)}");
         }
+
+        // 장착 현황 (장비 영속 v1 — 영웅에 유지됨)
+        sb.AppendLine();
+        sb.AppendLine($"무기          {(hero.weapon != null ? hero.weapon.displayName : "미장착 — 기본 공격 불가")}");
+        if (hero.equipment.Count == 0)
+        {
+            sb.AppendLine("장비          없음 (0 / 3)");
+        }
+        else
+        {
+            for (int i = 0; i < hero.equipment.Count; i++)
+                sb.AppendLine(i == 0
+                    ? $"장비          {hero.equipment[i].displayName}"
+                    : $"              {hero.equipment[i].displayName}");
+        }
         return sb.ToString();
     }
 

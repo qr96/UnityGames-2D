@@ -247,6 +247,141 @@ public static class LobbySceneBuilder
         Debug.Log("[LobbySceneBuilder] 출정 UI 생성 완료.");
     }
 
+    [MenuItem("Tools/GrabProto/로비 보관소 UI 생성")]
+    public static void BuildArmoryUI()
+    {
+        font = LoadFont();
+
+        Canvas canvas = Object.FindFirstObjectByType<Canvas>();
+        LobbyHUD hud = canvas != null ? canvas.GetComponent<LobbyHUD>() : null;
+        if (canvas == null || hud == null)
+        {
+            EditorUtility.DisplayDialog("보관소 UI", "Canvas/LobbyHUD가 없습니다. 먼저 [로비 씬 구성]을 실행하세요.", "확인");
+            return;
+        }
+        if (canvas.transform.Find("ArmoryPanel") != null)
+        {
+            EditorUtility.DisplayDialog("보관소 UI", "이미 ArmoryPanel이 있습니다.", "확인");
+            return;
+        }
+
+        UpdateUiScale(canvas);
+
+        // HUD 보관소 버튼 — 영입 버튼 왼쪽
+        if (canvas.transform.Find("ArmoryButton") == null)
+        {
+            Button armoryBtn = MakeButton(canvas.transform, "ArmoryButton", "보관소", new Color(0.32f, 0.42f, 0.38f), S(34f));
+            var abrt = armoryBtn.GetComponent<RectTransform>();
+            abrt.anchorMin = abrt.anchorMax = new Vector2(0.5f, 0f);
+            abrt.anchoredPosition = new Vector2(-S(360f), S(270f));
+            abrt.sizeDelta = new Vector2(S(320f), S(110f));
+            Wire(armoryBtn, hud, nameof(LobbyHUD.OnClickArmory));
+        }
+
+        // ---- 패널 본체 ----
+        var panelGO = new GameObject("ArmoryPanel", typeof(Image));
+        panelGO.transform.SetParent(canvas.transform, false);
+        var panelImg = panelGO.GetComponent<Image>();
+        panelImg.color = new Color(0.06f, 0.07f, 0.10f, 0.97f);
+        panelImg.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+        panelImg.type = Image.Type.Sliced;
+        var prt = panelGO.GetComponent<RectTransform>();
+        prt.anchorMin = prt.anchorMax = new Vector2(0.5f, 0.5f);
+        prt.sizeDelta = new Vector2(S(960f), S(1500f));
+
+        var panel = panelGO.AddComponent<ArmoryPanel>();
+
+        Text title = MakeText(panelGO.transform, "보관소  (0)", S(42f));
+        var trt = title.rectTransform;
+        trt.anchorMin = trt.anchorMax = new Vector2(0.5f, 1f);
+        trt.anchoredPosition = new Vector2(0f, -S(70f));
+        trt.sizeDelta = new Vector2(S(700f), S(80f));
+        panel.titleText = title;
+
+        Button close = MakeButton(panelGO.transform, "CloseButton", "✕", new Color(0.55f, 0.22f, 0.25f), S(34f));
+        var crt = close.GetComponent<RectTransform>();
+        crt.anchorMin = crt.anchorMax = new Vector2(1f, 1f);
+        crt.pivot = new Vector2(1f, 1f);
+        crt.anchoredPosition = new Vector2(-S(16f), -S(16f));
+        crt.sizeDelta = new Vector2(S(76f), S(76f));
+        Wire(close, panel, nameof(ArmoryPanel.Close));
+
+        // ---- 스크롤 뷰 (보관소는 무한히 쌓임) ----
+        var scrollGO = new GameObject("Scroll", typeof(RectTransform), typeof(ScrollRect), typeof(Image));
+        scrollGO.transform.SetParent(panelGO.transform, false);
+        var srt = scrollGO.GetComponent<RectTransform>();
+        srt.anchorMin = new Vector2(0.5f, 0f);
+        srt.anchorMax = new Vector2(0.5f, 1f);
+        srt.pivot = new Vector2(0.5f, 0.5f);
+        srt.anchoredPosition = new Vector2(0f, -S(35f));
+        srt.sizeDelta = new Vector2(S(860f), -S(230f)); // 상단 제목/하단 여백 제외
+        scrollGO.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.25f);
+
+        var viewportGO = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(Mask));
+        viewportGO.transform.SetParent(scrollGO.transform, false);
+        var vrt = viewportGO.GetComponent<RectTransform>();
+        vrt.anchorMin = Vector2.zero;
+        vrt.anchorMax = Vector2.one;
+        vrt.offsetMin = Vector2.zero;
+        vrt.offsetMax = Vector2.zero;
+        viewportGO.GetComponent<Image>().color = Color.white;
+        viewportGO.GetComponent<Mask>().showMaskGraphic = false;
+
+        var contentGO = new GameObject("Content", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+        contentGO.transform.SetParent(viewportGO.transform, false);
+        var cort = contentGO.GetComponent<RectTransform>();
+        cort.anchorMin = new Vector2(0.5f, 1f);
+        cort.anchorMax = new Vector2(0.5f, 1f);
+        cort.pivot = new Vector2(0.5f, 1f);
+        cort.sizeDelta = new Vector2(S(840f), 0f);
+        var layout = contentGO.GetComponent<VerticalLayoutGroup>();
+        layout.spacing = S(10f);
+        layout.padding = new RectOffset(0, 0, Mathf.RoundToInt(S(10f)), Mathf.RoundToInt(S(10f)));
+        layout.childAlignment = TextAnchor.UpperCenter;
+        layout.childControlWidth = false;
+        layout.childControlHeight = false;
+        layout.childForceExpandWidth = false;
+        layout.childForceExpandHeight = false;
+        contentGO.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        var scroll = scrollGO.GetComponent<ScrollRect>();
+        scroll.viewport = vrt;
+        scroll.content = cort;
+        scroll.horizontal = false;
+        scroll.vertical = true;
+        scroll.movementType = ScrollRect.MovementType.Clamped;
+        scroll.scrollSensitivity = S(30f);
+
+        // ---- 항목 템플릿 (읽기 전용 — Image + Text) ----
+        var entryGO = new GameObject("EntryTemplate", typeof(RectTransform), typeof(Image));
+        entryGO.transform.SetParent(contentGO.transform, false);
+        var ert = entryGO.GetComponent<RectTransform>();
+        ert.sizeDelta = new Vector2(S(820f), S(84f));
+        var eimg = entryGO.GetComponent<Image>();
+        eimg.color = new Color(0.14f, 0.17f, 0.25f, 0.9f);
+        eimg.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+        eimg.type = Image.Type.Sliced;
+
+        Text entryText = MakeText(entryGO.transform, "장비 이름", S(26f));
+        entryText.alignment = TextAnchor.MiddleLeft;
+        var etrt = entryText.rectTransform;
+        etrt.anchorMin = Vector2.zero;
+        etrt.anchorMax = Vector2.one;
+        etrt.offsetMin = new Vector2(S(24f), 0f);
+        etrt.offsetMax = new Vector2(-S(24f), 0f);
+        entryGO.SetActive(false);
+
+        panel.listRoot = contentGO.transform;
+        panel.entryTemplate = entryGO;
+        hud.armoryPanel = panel;
+        panelGO.SetActive(false);
+
+        EditorUtility.SetDirty(panel);
+        EditorUtility.SetDirty(hud);
+        EditorSceneManager.MarkSceneDirty(canvas.gameObject.scene);
+        Debug.Log("[LobbySceneBuilder] 보관소 UI 생성 완료.");
+    }
+
     [MenuItem("Tools/GrabProto/로비 출발 지점 UI 생성")]
     public static void BuildStartFloorUI()
     {

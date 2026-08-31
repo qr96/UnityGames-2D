@@ -9,6 +9,13 @@ public class LobbyHUD : MonoBehaviour
     public HeroManagePanel heroManagePanel; // 빌더가 자동 연결
     public SortiePanel sortiePanel;          // 빌더가 자동 연결
     public RecruitPanel recruitPanel;        // 빌더가 자동 연결 (영입 스펙 v1)
+    public ArmoryPanel armoryPanel;          // 빌더가 자동 연결 (장비 영속 v1)
+
+    public void OnClickArmory()
+    {
+        if (armoryPanel != null) armoryPanel.Open();
+        else Debug.LogWarning("[Lobby] ArmoryPanel이 연결되지 않았습니다 — [로비 보관소 UI 생성] 메뉴를 실행하세요.");
+    }
 
     public void OnClickRecruit()
     {
