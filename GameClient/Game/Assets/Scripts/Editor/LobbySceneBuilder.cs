@@ -28,7 +28,7 @@ public static class LobbySceneBuilder
             : 1f;
     }
 
-    [MenuItem("Tools/GrabProto/로비 씬 구성")]
+    [MenuItem("Tools/GrabProto/로비 씬 구성", false, 1)]
     public static void Build()
     {
         if (Object.FindFirstObjectByType<LobbyController>() != null)
@@ -127,11 +127,70 @@ public static class LobbySceneBuilder
         // ---- 영입 패널 ----
         BuildRecruitUIInternal(canvas, hud);
 
+        // ---- 보관소 / 출발 지점 / 목록 스크롤 (풀빌드에 포함 — 개별 메뉴는 재생성용) ----
+        BuildArmoryUI();
+        BuildStartFloorUI();
+        AddListScrolls();
+
         EditorSceneManager.MarkSceneDirty(lobbyGO.scene);
         Debug.Log("[LobbySceneBuilder] 로비 씬 구성 완료. 배치/색은 에디터에서 자유롭게 수정하세요.");
     }
 
-    [MenuItem("Tools/GrabProto/로비 영웅 관리 UI 생성")]
+    [MenuItem("Tools/GrabProto/로비 UI 패치 (누락 보완)", false, 2)]
+    public static void PatchLobbyUI()
+    {
+        font = LoadFont();
+
+        Canvas canvas = Object.FindFirstObjectByType<Canvas>();
+        LobbyHUD hud = canvas != null ? canvas.GetComponent<LobbyHUD>() : null;
+        if (canvas == null || hud == null)
+        {
+            EditorUtility.DisplayDialog("로비 UI 패치", "Canvas/LobbyHUD가 없습니다. 먼저 [로비 씬 구성]을 실행하세요.", "확인");
+            return;
+        }
+
+        var applied = new System.Collections.Generic.List<string>();
+
+        // 패널 단위 — 없으면 통째로 생성
+        if (canvas.transform.Find("HeroManagePanel") == null) { BuildHeroManageUI(); applied.Add("영웅 관리 패널"); }
+        if (canvas.transform.Find("SortiePanel") == null) { BuildSortieUI(); applied.Add("출정 패널"); }
+        if (canvas.transform.Find("RecruitPanel") == null) { BuildRecruitUI(); applied.Add("영입 패널"); }
+        if (canvas.transform.Find("ArmoryPanel") == null) { BuildArmoryUI(); applied.Add("보관소 패널"); }
+
+        // 요소 단위 — 패널은 있는데 뒤에 추가된 조각이 빠진 경우
+        var manage = Object.FindFirstObjectByType<HeroManagePanel>(FindObjectsInactive.Include);
+        if (manage != null && manage.dismissButton == null && manage.transform.Find("DismissButton") == null)
+        {
+            PatchDismissButton(canvas);
+            applied.Add("해고 버튼");
+        }
+
+        var sortie = Object.FindFirstObjectByType<SortiePanel>(FindObjectsInactive.Include);
+        if (sortie != null && sortie.startFloorText == null && sortie.transform.Find("StartFloorButton") == null)
+        {
+            BuildStartFloorUI();
+            applied.Add("출발 지점 버튼");
+        }
+
+        // 목록 스크롤 (RetrofitScroll이 자체 멱등)
+        int scrolls = 0;
+        if (manage != null && manage.listRoot != null && RetrofitScroll((RectTransform)manage.listRoot)) scrolls++;
+        if (sortie != null && sortie.listRoot != null && RetrofitScroll((RectTransform)sortie.listRoot)) scrolls++;
+        if (scrolls > 0) applied.Add($"목록 스크롤 x{scrolls}");
+
+        if (applied.Count > 0)
+        {
+            EditorSceneManager.MarkSceneDirty(canvas.gameObject.scene);
+            Debug.Log($"[LobbySceneBuilder] 패치 적용: {string.Join(", ", applied)}");
+            EditorUtility.DisplayDialog("로비 UI 패치", $"적용됨:\n- {string.Join("\n- ", applied)}", "확인");
+        }
+        else
+        {
+            EditorUtility.DisplayDialog("로비 UI 패치", "누락된 요소 없음 — 최신 상태입니다.", "확인");
+        }
+    }
+
+    [MenuItem("Tools/GrabProto/재생성/로비/영웅 관리 패널", false, 101)]
     public static void BuildHeroManageUI()
     {
         font = LoadFont();
@@ -155,7 +214,7 @@ public static class LobbySceneBuilder
         Debug.Log("[LobbySceneBuilder] 영웅 관리 UI 생성 완료.");
     }
 
-    [MenuItem("Tools/GrabProto/로비 목록 스크롤 적용")]
+    [MenuItem("Tools/GrabProto/재생성/로비/목록 스크롤", false, 102)]
     public static void AddListScrolls()
     {
         int applied = 0;
@@ -223,7 +282,7 @@ public static class LobbySceneBuilder
         return true;
     }
 
-    [MenuItem("Tools/GrabProto/로비 출정 UI 생성")]
+    [MenuItem("Tools/GrabProto/재생성/로비/출정 패널", false, 103)]
     public static void BuildSortieUI()
     {
         font = LoadFont();
@@ -247,7 +306,7 @@ public static class LobbySceneBuilder
         Debug.Log("[LobbySceneBuilder] 출정 UI 생성 완료.");
     }
 
-    [MenuItem("Tools/GrabProto/로비 보관소 UI 생성")]
+    [MenuItem("Tools/GrabProto/재생성/로비/보관소 패널", false, 104)]
     public static void BuildArmoryUI()
     {
         font = LoadFont();
@@ -382,7 +441,7 @@ public static class LobbySceneBuilder
         Debug.Log("[LobbySceneBuilder] 보관소 UI 생성 완료.");
     }
 
-    [MenuItem("Tools/GrabProto/로비 출발 지점 UI 생성")]
+    [MenuItem("Tools/GrabProto/재생성/로비/출발 지점 버튼", false, 105)]
     public static void BuildStartFloorUI()
     {
         font = LoadFont();
@@ -418,7 +477,7 @@ public static class LobbySceneBuilder
         Debug.Log("[LobbySceneBuilder] 출발 지점 버튼 생성 완료.");
     }
 
-    [MenuItem("Tools/GrabProto/로비 영입 UI 생성")]
+    [MenuItem("Tools/GrabProto/재생성/로비/영입 패널", false, 106)]
     public static void BuildRecruitUI()
     {
         font = LoadFont();

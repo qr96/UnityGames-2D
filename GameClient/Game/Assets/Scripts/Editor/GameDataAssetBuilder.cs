@@ -11,7 +11,7 @@ public static class GameDataAssetBuilder
 {
     const string Root = "Assets/GameData";
 
-    [MenuItem("Tools/GrabProto/게임 데이터 에셋 생성")]
+    [MenuItem("Tools/GrabProto/게임 데이터 에셋 생성", false, 30)]
     public static void Build()
     {
         if (AssetDatabase.LoadAssetAtPath<HeroDatabase>($"{Root}/Heroes/HeroDatabase.asset") != null)
@@ -38,11 +38,7 @@ public static class GameDataAssetBuilder
             AssetDatabase.CreateAsset(hero, $"{Root}/Heroes/Starter_{hero.id}.asset");
         AssetDatabase.CreateAsset(heroDb, $"{Root}/Heroes/HeroDatabase.asset");
 
-        // ---- 장비 ----
-        EquipmentDatabase equipDb = DevGameData.CreateEquipmentDatabase();
-        foreach (var item in equipDb.items)
-            AssetDatabase.CreateAsset(item, $"{Root}/Equipment/Equip_{item.id}.asset");
-        AssetDatabase.CreateAsset(equipDb, $"{Root}/Equipment/EquipmentDatabase.asset");
+        // 장비: EquipmentGenerator가 드랍 시 절차 생성 — 에셋 저장 없음 (장비 명세 v1.2)
 
         // ---- 런 설정 ----
         RunConfig config = DevGameData.CreateRunConfig();
@@ -72,7 +68,6 @@ public static class GameDataAssetBuilder
         if (bootstrap != null)
         {
             bootstrap.heroDatabase = heroDb;
-            bootstrap.equipmentDatabase = equipDb;
             bootstrap.runConfig = config;
             // ※ worldDefinition은 연결하지 않음 — 연결하면 랜덤 맵(useRandomMap)이 무시됨.
             //    고정 맵으로 테스트하려면 인스펙터에서 World.asset을 직접 연결할 것.

@@ -15,7 +15,7 @@ public static class GameUIBuilder
 {
     static Font font;
 
-    [MenuItem("Tools/GrabProto/게임 UI 생성")]
+    [MenuItem("Tools/GrabProto/게임 UI 생성", false, 11)]
     public static void Build()
     {
         font = LoadFont();
@@ -157,6 +157,11 @@ public static class GameUIBuilder
         // ---- 인벤토리 열기/닫기 버튼 ----
         BuildInventoryButtonsInternal(canvas, hud);
 
+        // ---- 탐험 / 야영지 / 계단 (풀빌드에 포함 — 개별 메뉴는 재생성용) ----
+        BuildExploreUI();
+        BuildCampUI();
+        BuildStairsUI();
+
         // ---- 부트스트랩 hud 자동 연결 ----
         var bootstrap = Object.FindFirstObjectByType<DevBootstrap>();
         if (bootstrap != null)
@@ -170,7 +175,39 @@ public static class GameUIBuilder
         Debug.Log("[GameUIBuilder] 게임 UI 생성 완료. 위치/크기/색은 에디터에서 자유롭게 수정하세요.");
     }
 
-    [MenuItem("Tools/GrabProto/영웅 장비 패널 생성")]
+    [MenuItem("Tools/GrabProto/게임 UI 패치 (누락 보완)", false, 12)]
+    public static void PatchGameUI()
+    {
+        font = LoadFont();
+
+        Canvas canvas = Object.FindFirstObjectByType<Canvas>();
+        GameHUD hud = canvas != null ? canvas.GetComponent<GameHUD>() : null;
+        if (canvas == null || hud == null)
+        {
+            EditorUtility.DisplayDialog("게임 UI 패치", "Canvas/GameHUD가 없습니다. 먼저 [게임 UI 생성]을 실행하세요.", "확인");
+            return;
+        }
+
+        var applied = new System.Collections.Generic.List<string>();
+        if (canvas.transform.Find("PartyEquipPanel") == null) { BuildPartyEquipPanel(); applied.Add("장비 패널"); }
+        if (canvas.transform.Find("InventoryButton") == null) { BuildInventoryButtons(); applied.Add("인벤토리 버튼"); }
+        if (canvas.transform.Find("ExploreDirectionPanel") == null) { BuildExploreUI(); applied.Add("탐험 UI"); }
+        if (canvas.transform.Find("CampPanel") == null) { BuildCampUI(); applied.Add("야영지 패널"); }
+        if (canvas.transform.Find("StairsPanel") == null) { BuildStairsUI(); applied.Add("계단 패널"); }
+
+        if (applied.Count > 0)
+        {
+            EditorSceneManager.MarkSceneDirty(canvas.gameObject.scene);
+            Debug.Log($"[GameUIBuilder] 패치 적용: {string.Join(", ", applied)}");
+            EditorUtility.DisplayDialog("게임 UI 패치", $"적용됨:\n- {string.Join("\n- ", applied)}", "확인");
+        }
+        else
+        {
+            EditorUtility.DisplayDialog("게임 UI 패치", "누락된 요소 없음 — 최신 상태입니다.", "확인");
+        }
+    }
+
+    [MenuItem("Tools/GrabProto/재생성/게임/장비 패널", false, 111)]
     public static void BuildPartyEquipPanel()
     {
         font = LoadFont();
@@ -244,7 +281,7 @@ public static class GameUIBuilder
         }
     }
 
-    [MenuItem("Tools/GrabProto/인벤토리 버튼 생성")]
+    [MenuItem("Tools/GrabProto/재생성/게임/인벤토리 버튼", false, 112)]
     public static void BuildInventoryButtons()
     {
         font = LoadFont();
@@ -310,7 +347,7 @@ public static class GameUIBuilder
             : 1f;
     }
 
-    [MenuItem("Tools/GrabProto/탐험 UI 생성 (방향 선택 + 지도)")]
+    [MenuItem("Tools/GrabProto/재생성/게임/탐험 UI (방향+지도)", false, 113)]
     public static void BuildExploreUI()
     {
         font = LoadFont();
@@ -455,7 +492,7 @@ public static class GameUIBuilder
         };
     }
 
-    [MenuItem("Tools/GrabProto/야영지 UI 생성")]
+    [MenuItem("Tools/GrabProto/재생성/게임/야영지 패널", false, 114)]
     public static void BuildCampUI()
     {
         font = LoadFont();
@@ -511,7 +548,7 @@ public static class GameUIBuilder
     }
 
 
-    [MenuItem("Tools/GrabProto/계단 UI 생성")]
+    [MenuItem("Tools/GrabProto/재생성/게임/계단 패널", false, 115)]
     public static void BuildStairsUI()
     {
         font = LoadFont();
