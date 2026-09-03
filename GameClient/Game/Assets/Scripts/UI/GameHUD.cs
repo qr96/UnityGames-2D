@@ -240,7 +240,11 @@ public class GameHUD : MonoBehaviour
         string unlockLine = names.Count > 0
             ? "영구 해금: " + string.Join(", ", names)
             : "새로 해금된 영웅은 없습니다.";
-        return unlockLine + "\n확보한 장비는 보관소와 영웅에게 유지됩니다.";
+        RunManager rmGold = RunManager.Instance;
+        string goldLine = rmGold != null && rmGold.Run != null && rmGold.Run.goldEarned > 0
+            ? $"\n획득 골드  +{rmGold.Run.goldEarned}"
+            : "";
+        return unlockLine + goldLine + "\n확보한 장비는 보관소와 영웅에게 유지됩니다.";
     }
 
     void SetLabel(string text)

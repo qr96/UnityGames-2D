@@ -22,6 +22,12 @@ public static class GoldWallet
         Gold = DevStartingGold;
     }
 
+    /// <summary>골드 입금 (원정 귀환 보상 등)</summary>
+    public static void Add(int amount)
+    {
+        if (amount > 0) Gold += amount;
+    }
+
     public static bool CanAfford(int cost) => cost <= Gold;
 
     public static bool Spend(int cost)
@@ -29,10 +35,5 @@ public static class GoldWallet
         if (cost < 0 || !CanAfford(cost)) return false;
         Gold -= cost;
         return true;
-    }
-
-    public static void Add(int amount)
-    {
-        if (amount > 0) Gold += amount;
     }
 }

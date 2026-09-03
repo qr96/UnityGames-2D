@@ -313,9 +313,12 @@ public class RunManager : MonoBehaviour
             return;
         }
 
+        // 골드 적립 (임시 경제: 일반 10 / 엘리트 20 — 귀환해야 입금, 전멸 시 소멸)
+        bool isElite = World.Current.nodeType == NodeContent.EliteBattle;
+        Run.goldEarned += isElite ? config.goldPerEliteBattle : config.goldPerBattle;
+
         // 획득처: 엘리트 2개/특별 8%, 일반 1개/특별 1% (던전 명세)
-        GrantEquipmentDrops(World.Current.nodeType == NodeContent.EliteBattle
-            ? NodeContent.EliteBattle : NodeContent.NormalBattle);
+        GrantEquipmentDrops(isElite ? NodeContent.EliteBattle : NodeContent.NormalBattle);
         SetPhase(RunPhase.Loot);
     }
 
@@ -344,6 +347,13 @@ public class RunManager : MonoBehaviour
 
     void FinishRunClear()
     {
+        // 적립 골드 입금 (임시 경제) — 전멸(ReportBattleLost) 경로에서는 입금 없음
+        if (Run != null && Run.goldEarned > 0)
+        {
+            GoldWallet.Add(Run.goldEarned);
+            Debug.Log($"[RunManager] 원정 골드 입금: +{Run.goldEarned} (보유 {GoldWallet.Gold})");
+        }
+
         LastUnlockedHeroNames.Clear(); // 해금 모델 폐지 (영입 스펙 v1: 소유의 원천은 로스터)
         EndExpedition();
         SetPhase(RunPhase.RunClear);

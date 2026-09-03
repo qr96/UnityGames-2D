@@ -6,6 +6,9 @@ public class RunConfig : ScriptableObject
 {
     [Header("전투 보상 / 포션 (수치 미정 → 튜닝값)")]
     public int potionsPerBattle = 3;
+    [Tooltip("전투 승리 시 골드 적립 (귀환해야 입금 — 전멸 시 소멸). ※ 임시값")]
+    public int goldPerBattle = 10;
+    public int goldPerEliteBattle = 20;
 
     [Header("적 기본 스탯 (1층 일반 기준 — 층 배수로 스케일)")]
     public float enemyBaseHP = 35f;

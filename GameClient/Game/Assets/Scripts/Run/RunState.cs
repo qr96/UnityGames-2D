@@ -23,6 +23,9 @@ public class RunState
     /// <summary>이번 원정에서 획득한 전리품 — 전멸 시 이것만 소멸 (탐험 규칙)</summary>
     public readonly List<EquipmentDefinition> acquiredThisRun = new List<EquipmentDefinition>();
 
+    /// <summary>이번 원정 적립 골드 — 귀환/클리어 시 입금, 전멸 시 소멸 (전리품과 동일 규칙)</summary>
+    public int goldEarned;
+
     public int battleNumber = 1;      // 1부터 시작
     public bool inBattle;             // 전투 중 장비 변경 불가 가드 (GDD 8)
 
