@@ -34,7 +34,7 @@ public static class LobbySceneBuilder
     /// <summary>상세/카드 공용 — 회색 소자 라벨 (x=28 고정)</summary>
     static void MakeDetailLabel(Transform parent, Color color, string text, float y)
     {
-        Text label = MakeText(parent, text, 20);
+        Text label = MakeText(parent, text, 24);
         label.color = color;
         label.alignment = TextAnchor.UpperLeft;
         PlaceTopLeft(label.rectTransform, 28f, y, 90f, 28f);
@@ -462,13 +462,13 @@ public static class LobbySceneBuilder
         var entryGO = new GameObject("EntryTemplate", typeof(RectTransform), typeof(Image));
         entryGO.transform.SetParent(contentGO.transform, false);
         var ert = entryGO.GetComponent<RectTransform>();
-        ert.sizeDelta = new Vector2(S(820f), S(84f));
+        ert.sizeDelta = new Vector2(S(820f), S(96f)); // 폰트 상향분
         var eimg = entryGO.GetComponent<Image>();
         eimg.color = new Color(0.14f, 0.17f, 0.25f, 0.9f);
         eimg.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
         eimg.type = Image.Type.Sliced;
 
-        Text entryText = MakeText(entryGO.transform, "장비 이름", S(26f));
+        Text entryText = MakeText(entryGO.transform, "장비 이름", S(30f));
         entryText.alignment = TextAnchor.MiddleLeft;
         var etrt = entryText.rectTransform;
         etrt.anchorMin = Vector2.zero;
@@ -576,7 +576,7 @@ public static class LobbySceneBuilder
         panelImg.type = Image.Type.Sliced;
         var prt = panelGO.GetComponent<RectTransform>();
         prt.anchorMin = prt.anchorMax = new Vector2(0.5f, 0.5f);
-        prt.sizeDelta = new Vector2(S(1020f), S(1240f)); // 3:4 화면(1440) 내
+        prt.sizeDelta = new Vector2(S(1020f), S(1370f)); // 3:4 화면(1440) 내 — 폰트 상향분 확보
 
         var panel = panelGO.AddComponent<RecruitPanel>();
         panel.lobby = Object.FindFirstObjectByType<LobbyController>();
@@ -599,7 +599,7 @@ public static class LobbySceneBuilder
         Text gold = MakeText(panelGO.transform, "골드  0", S(30f));
         var grt = gold.rectTransform;
         grt.anchorMin = grt.anchorMax = new Vector2(0.5f, 1f);
-        grt.anchoredPosition = new Vector2(0f, -S(140f));
+        grt.anchoredPosition = new Vector2(0f, -S(135f));
         grt.sizeDelta = new Vector2(S(940f), S(50f));
         panel.goldText = gold;
 
@@ -612,7 +612,7 @@ public static class LobbySceneBuilder
             nameof(RecruitPanel.OnClickRecruit1),
             nameof(RecruitPanel.OnClickRecruit2),
         };
-        const float cardW = 940f, cardH = 320f, gap = 18f;
+        const float cardW = 940f, cardH = 350f, gap = 18f; // 폰트 상향분 반영
         Color subColor = new Color(0.56f, 0.61f, 0.70f);   // 라벨/보조 회색
         string[] statLabels = { "HP", "공격", "치확", "치피" };
         float[] statX = { 28f, 224f, 420f, 560f }; // 값 폭에 맞춘 열 위치
@@ -630,56 +630,56 @@ public static class LobbySceneBuilder
             var cardRT = cardGO.GetComponent<RectTransform>();
             cardRT.anchorMin = cardRT.anchorMax = new Vector2(0.5f, 1f);
             cardRT.pivot = new Vector2(0.5f, 1f);
-            cardRT.anchoredPosition = new Vector2(0f, -S(210f + i * (cardH + gap)));
+            cardRT.anchoredPosition = new Vector2(0f, -S(200f + i * (cardH + gap)));
             cardRT.sizeDelta = new Vector2(S(cardW), S(cardH));
 
             // 이름 (좌상단, 볼드)
-            Text nameT = MakeText(cardGO.transform, "이름", S(32f));
+            Text nameT = MakeText(cardGO.transform, "이름", S(36f));
             nameT.fontStyle = FontStyle.Bold;
             nameT.alignment = TextAnchor.UpperLeft;
-            PlaceTopLeft(nameT.rectTransform, 28f, 18f, 460f, 44f);
+            PlaceTopLeft(nameT.rectTransform, 28f, 16f, 460f, 48f);
             card.nameText = nameT;
 
             // 스탯 4칸: 라벨(회색 소자) / 값(크게) / 보조(회색 소자)
             for (int s = 0; s < 4; s++)
             {
-                Text label = MakeText(cardGO.transform, statLabels[s], S(20f));
+                Text label = MakeText(cardGO.transform, statLabels[s], S(24f));
                 label.color = subColor;
                 label.alignment = TextAnchor.UpperLeft;
-                PlaceTopLeft(label.rectTransform, statX[s], 76f, 160f, 28f);
+                PlaceTopLeft(label.rectTransform, statX[s], 74f, 160f, 32f);
 
-                Text value = MakeText(cardGO.transform, "-", S(32f));
+                Text value = MakeText(cardGO.transform, "-", S(36f));
                 value.alignment = TextAnchor.UpperLeft;
-                PlaceTopLeft(value.rectTransform, statX[s], 102f, 180f, 42f);
+                PlaceTopLeft(value.rectTransform, statX[s], 104f, 180f, 48f);
                 card.statValues[s] = value;
 
-                Text sub = MakeText(cardGO.transform, "", S(18f));
+                Text sub = MakeText(cardGO.transform, "", S(22f));
                 sub.color = subColor;
                 sub.alignment = TextAnchor.UpperLeft;
-                PlaceTopLeft(sub.rectTransform, statX[s], 146f, 180f, 26f);
+                PlaceTopLeft(sub.rectTransform, statX[s], 152f, 180f, 30f);
                 card.statSubs[s] = sub;
             }
 
             // 액티브 줄 (라벨 회색 + 내용은 richText로 이름 강조/조건 회색)
-            Text activeLabel = MakeText(cardGO.transform, "액티브", S(20f));
+            Text activeLabel = MakeText(cardGO.transform, "액티브", S(24f));
             activeLabel.color = subColor;
             activeLabel.alignment = TextAnchor.UpperLeft;
-            PlaceTopLeft(activeLabel.rectTransform, 28f, 196f, 90f, 28f);
+            PlaceTopLeft(activeLabel.rectTransform, 28f, 198f, 110f, 32f);
 
-            Text activeT = MakeText(cardGO.transform, "-", S(24f));
+            Text activeT = MakeText(cardGO.transform, "-", S(27f));
             activeT.alignment = TextAnchor.UpperLeft;
-            PlaceTopLeft(activeT.rectTransform, 128f, 193f, 560f, 34f);
+            PlaceTopLeft(activeT.rectTransform, 148f, 195f, 540f, 38f);
             card.activeText = activeT;
 
             // 특성 줄 (액티브 줄과 동형: 라벨 회색 + 이름 금색·설명 회색은 richText)
-            Text traitLabel = MakeText(cardGO.transform, "특성", S(20f));
+            Text traitLabel = MakeText(cardGO.transform, "특성", S(24f));
             traitLabel.color = subColor;
             traitLabel.alignment = TextAnchor.UpperLeft;
-            PlaceTopLeft(traitLabel.rectTransform, 28f, 242f, 90f, 28f);
+            PlaceTopLeft(traitLabel.rectTransform, 28f, 240f, 110f, 32f);
 
-            Text traitT = MakeText(cardGO.transform, "-", S(22f));
+            Text traitT = MakeText(cardGO.transform, "-", S(27f));
             traitT.alignment = TextAnchor.UpperLeft;
-            PlaceTopLeft(traitT.rectTransform, 128f, 240f, 560f, 70f); // 긴 설명 2줄 허용
+            PlaceTopLeft(traitT.rectTransform, 148f, 237f, 540f, 90f); // 긴 설명 2줄 허용
             card.traitText = traitT;
 
             // 영입 버튼: 오른쪽 (뱃지 아래)
@@ -848,7 +848,7 @@ public static class LobbySceneBuilder
         lrt.anchorMin = lrt.anchorMax = new Vector2(0.5f, 1f);
         lrt.pivot = new Vector2(0.5f, 1f);
         lrt.anchoredPosition = new Vector2(0f, -150f);
-        lrt.sizeDelta = new Vector2(840f, 560f); // 패널 축소분 반영
+        lrt.sizeDelta = new Vector2(840f, 400f); // 상세 폰트 상향분 양보 (스크롤로 8명 대응)
         var layout = listGO.GetComponent<VerticalLayoutGroup>();
         layout.spacing = 14f;
         layout.childAlignment = TextAnchor.UpperCenter;
@@ -872,60 +872,60 @@ public static class LobbySceneBuilder
         drt.anchorMin = drt.anchorMax = new Vector2(0.5f, 0f);
         drt.pivot = new Vector2(0.5f, 0f);
         drt.anchoredPosition = new Vector2(0f, 140f); // 해고 버튼 위 공간 확보
-        drt.sizeDelta = new Vector2(840f, 440f);
+        drt.sizeDelta = new Vector2(840f, 520f); // 폰트 상향분 반영
 
         var dv = panel.detail;
         Color subColor = new Color(0.56f, 0.61f, 0.70f);
         string[] statLabels = { "HP", "공격", "치확", "치피" };
         float[] statX = { 28f, 224f, 420f, 560f };
 
-        Text dName = MakeText(detailGO.transform, "영웅을 선택하세요", 30);
+        Text dName = MakeText(detailGO.transform, "영웅을 선택하세요", 34);
         dName.fontStyle = FontStyle.Bold;
         dName.alignment = TextAnchor.UpperLeft;
-        PlaceTopLeft(dName.rectTransform, 28f, 16f, 640f, 42f);
+        PlaceTopLeft(dName.rectTransform, 28f, 14f, 680f, 46f);
         dv.nameText = dName;
 
         for (int s = 0; s < 4; s++)
         {
-            Text label = MakeText(detailGO.transform, statLabels[s], 20);
+            Text label = MakeText(detailGO.transform, statLabels[s], 24);
             label.color = subColor;
             label.alignment = TextAnchor.UpperLeft;
-            PlaceTopLeft(label.rectTransform, statX[s], 70f, 160f, 28f);
+            PlaceTopLeft(label.rectTransform, statX[s], 68f, 160f, 32f);
 
-            Text value = MakeText(detailGO.transform, "-", 32);
+            Text value = MakeText(detailGO.transform, "-", 36);
             value.alignment = TextAnchor.UpperLeft;
-            PlaceTopLeft(value.rectTransform, statX[s], 96f, 180f, 42f);
+            PlaceTopLeft(value.rectTransform, statX[s], 98f, 180f, 48f);
             dv.statValues[s] = value;
 
-            Text sub = MakeText(detailGO.transform, "", 18);
+            Text sub = MakeText(detailGO.transform, "", 22);
             sub.color = subColor;
             sub.alignment = TextAnchor.UpperLeft;
-            PlaceTopLeft(sub.rectTransform, statX[s], 140f, 180f, 26f);
+            PlaceTopLeft(sub.rectTransform, statX[s], 146f, 180f, 30f);
             dv.statSubs[s] = sub;
         }
 
-        MakeDetailLabel(detailGO.transform, subColor, "액티브", 182f);
-        Text dActive = MakeText(detailGO.transform, "-", 23);
+        MakeDetailLabel(detailGO.transform, subColor, "액티브", 192f);
+        Text dActive = MakeText(detailGO.transform, "-", 27);
         dActive.alignment = TextAnchor.UpperLeft;
-        PlaceTopLeft(dActive.rectTransform, 128f, 179f, 680f, 32f);
+        PlaceTopLeft(dActive.rectTransform, 148f, 189f, 660f, 38f);
         dv.activeText = dActive;
 
-        MakeDetailLabel(detailGO.transform, subColor, "특성", 218f);
-        Text dTrait = MakeText(detailGO.transform, "-", 22);
+        MakeDetailLabel(detailGO.transform, subColor, "특성", 234f);
+        Text dTrait = MakeText(detailGO.transform, "-", 27);
         dTrait.alignment = TextAnchor.UpperLeft;
-        PlaceTopLeft(dTrait.rectTransform, 128f, 215f, 680f, 58f);
+        PlaceTopLeft(dTrait.rectTransform, 148f, 231f, 660f, 82f); // 긴 설명 2줄 허용
         dv.traitText = dTrait;
 
-        MakeDetailLabel(detailGO.transform, subColor, "무기", 282f);
-        Text dWeapon = MakeText(detailGO.transform, "-", 22);
+        MakeDetailLabel(detailGO.transform, subColor, "무기", 320f);
+        Text dWeapon = MakeText(detailGO.transform, "-", 27);
         dWeapon.alignment = TextAnchor.UpperLeft;
-        PlaceTopLeft(dWeapon.rectTransform, 128f, 279f, 680f, 30f);
+        PlaceTopLeft(dWeapon.rectTransform, 148f, 317f, 660f, 36f);
         dv.weaponText = dWeapon;
 
-        MakeDetailLabel(detailGO.transform, subColor, "장비", 316f);
-        Text dEquip = MakeText(detailGO.transform, "-", 22);
+        MakeDetailLabel(detailGO.transform, subColor, "장비", 360f);
+        Text dEquip = MakeText(detailGO.transform, "-", 27);
         dEquip.alignment = TextAnchor.UpperLeft;
-        PlaceTopLeft(dEquip.rectTransform, 128f, 313f, 680f, 110f); // 최대 3줄
+        PlaceTopLeft(dEquip.rectTransform, 148f, 357f, 660f, 150f); // 최대 3줄
         dv.equipText = dEquip;
 
         // 해고 버튼 (영입 스펙 v1 — 환급 없음)
