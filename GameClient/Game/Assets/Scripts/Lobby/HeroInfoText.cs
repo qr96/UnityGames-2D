@@ -1,61 +1,11 @@
 using System.Text;
 
 /// <summary>
-/// 보유/후보 영웅 정보 텍스트 공용 빌더 (영입 스펙 v1 — 정보 전부 공개).
-/// HP·공격력은 "현재 레벨 값 / 최대(Lv.10) 값"으로 표기.
-/// 영웅 관리 패널과 영입 상점 패널이 공유.
+/// 영웅 정보 텍스트 공용 조각 (목록 한 줄 요약 / 무기 조건 한글화).
+/// 상세·카드 본문은 각 패널이 필드 구조로 직접 구성 (가독성 개편).
 /// </summary>
 public static class HeroInfoText
 {
-    public static string Build(OwnedHero hero)
-    {
-        if (hero == null) return "";
-        var sb = new StringBuilder();
-
-        string name = hero.definition != null ? hero.definition.displayName : hero.heroId;
-        sb.AppendLine($"{name}  Lv.{hero.level}");
-        sb.AppendLine();
-        sb.AppendLine($"HP            {hero.MaxHP:0} / 최대 {hero.stats.hpLv10:0}");
-        sb.AppendLine($"공격력        {hero.Attack:0.#} / 최대 {hero.stats.attackLv10:0.#}");
-        sb.AppendLine($"치확 / 치피   {hero.CritChance:0.#}% / {hero.CritDamage:0}%");
-
-        if (hero.activeSkill != null)
-        {
-            string mode = hero.activeSkill.activation == SkillActivation.OnRelease ? "내려놓기" : "자동";
-            sb.AppendLine($"액티브        {hero.activeSkill.displayName}  ({mode} · {WeaponReqKorean(hero.activeSkill.weaponRequirement)} · 쿨 {hero.activeSkill.cooldown:0}초)");
-        }
-        else
-        {
-            sb.AppendLine("액티브        -");
-        }
-
-        string trait = TraitCatalog.DisplayName(hero.traitId);
-        if (string.IsNullOrEmpty(trait))
-        {
-            sb.AppendLine("특성          -");
-        }
-        else
-        {
-            sb.AppendLine($"특성          {trait}");
-            sb.AppendLine($"              {TraitCatalog.Description(hero.traitId)}");
-        }
-
-        // 장착 현황 (장비 영속 v1 — 영웅에 유지됨)
-        sb.AppendLine();
-        sb.AppendLine($"무기          {(hero.weapon != null ? hero.weapon.displayName : "미장착 — 기본 공격 불가")}");
-        if (hero.equipment.Count == 0)
-        {
-            sb.AppendLine("장비          없음 (0 / 3)");
-        }
-        else
-        {
-            for (int i = 0; i < hero.equipment.Count; i++)
-                sb.AppendLine(i == 0
-                    ? $"장비          {hero.equipment[i].displayName}"
-                    : $"              {hero.equipment[i].displayName}");
-        }
-        return sb.ToString();
-    }
 
     public static string WeaponReqKorean(WeaponRequirement req)
     {

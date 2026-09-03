@@ -155,6 +155,7 @@ public static class HeroRoster
             hasFixedWeapon = true,
             fixedWeapon = weapon,
         };
+        GrantInitialWeapon(hero, new System.Random(index)); // 생성 시 지급 — 로비에서 '미장착' 오해 방지
         heroes.Add(hero);
     }
 
@@ -171,6 +172,7 @@ public static class HeroRoster
         var hero = new OwnedHero(System.Guid.NewGuid().ToString("N"), def, HeroStatBlock.Roll(rng));
         hero.activeSkill = RandomSkill(rng);
         hero.traitId = TraitCatalog.RandomId(rng); // 특성 1개 (효과는 목록 확정 후)
+        GrantInitialWeapon(hero, rng);
         return hero;
     }
 
@@ -224,6 +226,35 @@ public static class HeroRoster
     /// <summary>정의로 보유 영웅 검색 (기존 정의 기반 흐름 호환 — 없으면 null).</summary>
     public static OwnedHero Get(HeroDefinition def) =>
         def != null ? FindById(def.id) : null;
+
+    /// <summary>
+    /// ※ 임시 (무기 획득 흐름 확정 전): 생성 시 기본 무기 1회 지급 — RL1, 비특별.
+    /// 시작 영웅은 표 확정 타입, 랜덤 영웅은 액티브 무기 조건에 맞는 타입.
+    /// 지급 시점을 출정 → 생성으로 옮긴 이유: 장비 영속에서 로비 '미장착 — 기본 공격 불가'
+    /// 표시가 오해를 부름 (RunManager의 출정 시 지급은 안전망으로 유지 — 무기 없을 때만).
+    /// </summary>
+    static void GrantInitialWeapon(OwnedHero hero, System.Random rng)
+    {
+        if (hero == null || hero.weapon != null) return;
+
+        WeaponType type;
+        if (hero.hasFixedWeapon)
+        {
+            type = hero.fixedWeapon;
+        }
+        else
+        {
+            var req = hero.activeSkill != null ? hero.activeSkill.weaponRequirement : WeaponRequirement.None;
+            switch (req)
+            {
+                case WeaponRequirement.Bow: type = WeaponType.Bow; break;
+                case WeaponRequirement.MagicTool: type = WeaponType.MagicTool; break;
+                case WeaponRequirement.Melee: type = WeaponType.Sword; break;
+                default: type = (WeaponType)rng.Next(5); break;
+            }
+        }
+        hero.weapon = EquipmentGenerator.GenerateWeapon(type, rewardLevel: 1, special: false, null, rng);
+    }
 
     static SkillDefinition FindSkill(string id) =>
         skillPool.Find(s => s != null && s.id == id);

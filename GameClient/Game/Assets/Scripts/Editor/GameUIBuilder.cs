@@ -29,7 +29,7 @@ public static class GameUIBuilder
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             var scaler = canvasGO.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1080f, 1920f);
+            scaler.referenceResolution = new Vector2(1080f, 1440f); // 3:4 세로 (화면 비율 개편)
             scaler.matchWidthOrHeight = 0.5f;
             Undo.RegisterCreatedObjectUndo(canvasGO, "Create Canvas");
         }
@@ -188,6 +188,8 @@ public static class GameUIBuilder
             return;
         }
 
+        ApplyCanvasStandard(canvas); // 3:4 전환 — 기존 씬 마이그레이션 겸용
+
         var applied = new System.Collections.Generic.List<string>();
         if (canvas.transform.Find("PartyEquipPanel") == null) { BuildPartyEquipPanel(); applied.Add("장비 패널"); }
         if (canvas.transform.Find("InventoryButton") == null) { BuildInventoryButtons(); applied.Add("인벤토리 버튼"); }
@@ -338,6 +340,17 @@ public static class GameUIBuilder
 
     static float uiScale = 1f; // 캔버스 기준 해상도 보정 (1080 폭 설계 기준)
     static float S(float value) => value * uiScale;
+
+    /// <summary>캔버스 표준 (화면 비율 개편: 3:4 세로 1080×1440) — 기존 씬에도 강제 적용</summary>
+    static void ApplyCanvasStandard(Canvas canvas)
+    {
+        var scaler = canvas != null ? canvas.GetComponent<CanvasScaler>() : null;
+        if (scaler == null) return;
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1080f, 1440f);
+        scaler.matchWidthOrHeight = 0f; // 폭 기준 (S() 스케일과 일치)
+        EditorUtility.SetDirty(scaler);
+    }
 
     static void UpdateUiScale(Canvas canvas)
     {

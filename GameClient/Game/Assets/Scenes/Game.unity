@@ -3411,7 +3411,7 @@ MonoBehaviour:
   m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 100
   m_ScaleFactor: 1
-  m_ReferenceResolution: {x: 720, y: 1280}
+  m_ReferenceResolution: {x: 1080, y: 1440}
   m_ScreenMatchMode: 0
   m_MatchWidthOrHeight: 0
   m_PhysicalUnit: 3
@@ -4458,15 +4458,25 @@ MonoBehaviour:
   worldDefinition: {fileID: 0}
   useRandomMap: 1
   mapSeed: 0
-  floorCount: 3
   mapConfig:
+    maxFloor: 40
+    entryPointFloors: 0b000000150000001f000000
+    minRoomCount: 10
+    maxRoomCount: 14
+    minStairCombatDistance: 2
+    targetStairCombatDistance: 3
+    maxStairCombatDistance: 6
+    maxLinearRoomsBeforeBranch: 2
+    minBranchCount: 1
+    rejoinPatternChance: 0.35
+    rejoinMinTreeDistance: 4
+    eliteMinCount: 1
+    eliteMaxCount: 2
+    treasureMinCount: 1
+    treasureMaxCount: 2
+    maxGenerationAttempts: 30
     gridWidth: 5
     gridHeight: 6
-    fillRatio: 0.6
-    extraLoopEdges: 2
-    eliteCount: 2
-    treasureCount: 2
-    specialCount: 0
     cellSpacingX: 16
     cellSpacingY: 14
     floorOffsetX: 240
