@@ -63,6 +63,16 @@ public class Hero : Unit
         * (Status != null ? Status.Multiplier(StatusEffects.Kind.Damage) : 1f)
         * (traits != null ? traits.AttackMult : 1f);
 
+    protected override void OnDisable()
+    {
+        base.OnDisable();
+        if (slowNotified) // 잡힌 채 사망/씬 정리 — 슬로우 카운트 누수 방지
+        {
+            slowNotified = false;
+            GrabSlowMotion.NotifyRelease();
+        }
+    }
+
     /// <summary>무모함 등 '받는 피해 증가'는 DR 합산과 별도 곱 (장비 명세 §6)</summary>
     public override void TakeDamage(float amount)
     {
@@ -297,6 +307,8 @@ public class Hero : Unit
 
     // ---------- 잡기 (GDD 3) ----------
 
+    bool slowNotified; // GrabSlowMotion 카운트 누수 방지 (사망/비활성 대비)
+
     public void Grab()
     {
         if (IsDead) return;
@@ -304,6 +316,12 @@ public class Hero : Unit
         CurrentState = State.Grabbed;
         grabWorldPos = transform.position;
         wigglePhase = 0f;
+
+        if (!slowNotified) // 잡기 슬로우 모션 (실험 기능)
+        {
+            slowNotified = true;
+            GrabSlowMotion.NotifyGrab();
+        }
     }
 
     public void UpdateGrabPosition(Vector3 world)
@@ -316,6 +334,12 @@ public class Hero : Unit
     {
         if (!IsGrabbed) return;
         CurrentState = State.Idle;
+
+        if (slowNotified) // 잡기 슬로우 해제
+        {
+            slowNotified = false;
+            GrabSlowMotion.NotifyRelease();
+        }
         if (visual != null) visual.localRotation = Quaternion.identity;
         landingTimer = landingDelay;
         actTimer = Mathf.Max(actTimer, landingDelay);
@@ -330,9 +354,11 @@ public class Hero : Unit
 
     void UpdateGrabbed()
     {
-        transform.position = Vector3.Lerp(transform.position, grabWorldPos, 25f * Time.deltaTime);
+        // 잡기 슬로우 모션 중에도 손 추적/버둥은 원래 속도 (unscaled) —
+        // 세상만 느려지고 잡힌 영웅과 조작감은 생생하게 유지
+        transform.position = Vector3.Lerp(transform.position, grabWorldPos, 25f * Time.unscaledDeltaTime);
 
-        wigglePhase += Time.deltaTime * wiggleSpeed;
+        wigglePhase += Time.unscaledDeltaTime * wiggleSpeed;
         if (visual != null)
             visual.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(wigglePhase) * wiggleAngle);
     }
