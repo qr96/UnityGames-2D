@@ -57,7 +57,8 @@ public static class GameUIBuilder
 
         // 상단 페이즈 라벨
         Text phaseLabel = MakeText(root, "PhaseLabel", "전투 준비", 44);
-        SetAnchored(phaseLabel.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -70f), new Vector2(1000f, 90f));
+        SetAnchored(phaseLabel.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -66f), new Vector2(640f, 124f)); // 지도 버튼(좌상단)과 분리, 2줄 허용
+        phaseLabel.raycastTarget = false; // 상단 버튼 클릭 차단 방지
         hud.phaseLabel = phaseLabel;
 
         // ================= 전투 준비 화면 =================
@@ -244,7 +245,8 @@ public static class GameUIBuilder
         var panelGO = new GameObject("PartyEquipPanel", typeof(RectTransform), typeof(HorizontalLayoutGroup));
         panelGO.transform.SetParent(canvas.transform, false);
         var prt = panelGO.GetComponent<RectTransform>();
-        SetAnchored(prt, new Vector2(0.5f, 0f), new Vector2(0f, 690f), new Vector2(900f, 340f));
+        // 상단 배치 (3:4 개편): 전투 준비 중 상단 필드는 빈 공간 — 하단의 영웅/전투 시작 버튼과 분리
+        SetAnchored(prt, new Vector2(0.5f, 1f), new Vector2(0f, -420f), new Vector2(900f, 340f));
 
         var layout = panelGO.GetComponent<HorizontalLayoutGroup>();
         layout.spacing = 14f;
@@ -391,20 +393,20 @@ public static class GameUIBuilder
         var panel = panelGO.AddComponent<ExploreDirectionPanel>();
         panel.slots = new[]
         {
-            MakeDirectionSlot(panelGO.transform, Direction.North, new Vector2(0.5f, 1f), new Vector2(0f, -S(220f)), new Vector2(S(560f), S(150f))),
-            MakeDirectionSlot(panelGO.transform, Direction.South, new Vector2(0.5f, 0f), new Vector2(0f, S(220f)),  new Vector2(S(560f), S(150f))),
-            MakeDirectionSlot(panelGO.transform, Direction.West,  new Vector2(0f, 0.5f), new Vector2(S(200f), 0f),  new Vector2(S(380f), S(170f))),
-            MakeDirectionSlot(panelGO.transform, Direction.East,  new Vector2(1f, 0.5f), new Vector2(-S(200f), 0f), new Vector2(S(380f), S(170f))),
+            MakeDirectionSlot(panelGO.transform, Direction.North, new Vector2(0.5f, 1f), new Vector2(0f, -S(230f)), new Vector2(S(640f), S(170f))),
+            MakeDirectionSlot(panelGO.transform, Direction.South, new Vector2(0.5f, 0f), new Vector2(0f, S(230f)),  new Vector2(S(640f), S(170f))),
+            MakeDirectionSlot(panelGO.transform, Direction.West,  new Vector2(0f, 0.5f), new Vector2(S(240f), 0f),  new Vector2(S(460f), S(190f))),
+            MakeDirectionSlot(panelGO.transform, Direction.East,  new Vector2(1f, 0.5f), new Vector2(-S(240f), 0f), new Vector2(S(460f), S(190f))),
         };
         panelGO.SetActive(false);
 
         // ---- 지도 버튼 (우상단) ----
         Button mapBtn = MakeButton(canvas.transform, "MapButton", "지도", new Color(0.25f, 0.27f, 0.33f), 30);
         var mrt = mapBtn.GetComponent<RectTransform>();
-        mrt.anchorMin = mrt.anchorMax = new Vector2(1f, 1f);
+        mrt.anchorMin = mrt.anchorMax = new Vector2(0f, 1f); // 좌상단 — 상단 라벨과 분리
         mrt.pivot = new Vector2(1f, 1f);
-        mrt.anchoredPosition = new Vector2(-S(30f), -S(30f));
-        mrt.sizeDelta = new Vector2(S(160f), S(90f));
+        mrt.anchoredPosition = new Vector2(S(30f) + S(90f), -S(30f) - S(45f)); // 중심 앵커 보정 (좌상단 여백 30)
+        mrt.sizeDelta = new Vector2(S(180f), S(90f));
         WireButton(mapBtn, hud, nameof(GameHUD.OnClickOpenMap));
         mapBtn.gameObject.SetActive(false);
 
@@ -478,7 +480,7 @@ public static class GameUIBuilder
         Text builtIn = btn.GetComponentInChildren<Text>();
         if (builtIn != null) Object.DestroyImmediate(builtIn.gameObject);
 
-        Text nameText = MakeText(btn.transform, "NameText", "이름", 32);
+        Text nameText = MakeText(btn.transform, "NameText", "이름", 34);
         var nrt = nameText.rectTransform;
         nrt.anchorMin = new Vector2(0f, 0.5f);
         nrt.anchorMax = new Vector2(1f, 1f);
@@ -486,7 +488,7 @@ public static class GameUIBuilder
         nrt.offsetMax = new Vector2(-S(16f), -S(8f));
         nameText.alignment = TextAnchor.MiddleCenter;
 
-        Text preview = MakeText(btn.transform, "PreviewText", "미리보기", 24);
+        Text preview = MakeText(btn.transform, "PreviewText", "미리보기", 26);
         preview.fontStyle = FontStyle.Normal;
         preview.color = new Color(0.8f, 0.8f, 0.85f);
         var pvrt = preview.rectTransform;

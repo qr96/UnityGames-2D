@@ -113,9 +113,9 @@ public class GameHUD : MonoBehaviour
                     if (region != null) regionName = region.regionName + " · ";
                 }
                 if (rm.CanDescend)
-                    SetLabel($"{regionName}{locName} — 계단 확보됨 (언제든 귀환/하강 가능)");
+                    SetLabel($"{regionName}{locName}\n계단 확보 · 귀환/하강 가능");
                 else if (rm.CanReturn)
-                    SetLabel($"{regionName}{locName} — 외부 통로 개방됨 (언제든 귀환 가능)");
+                    SetLabel($"{regionName}{locName}\n외부 통로 개방 · 귀환 가능");
                 else
                     SetLabel($"{regionName}어디로 갈까요?");
                 if (exploreDirectionPanel != null) exploreDirectionPanel.Refresh();
