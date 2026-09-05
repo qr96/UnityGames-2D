@@ -46,8 +46,9 @@ public class LobbyEquipSlotUI : MonoBehaviour, IPointerClickHandler, IBeginDragH
         bool filled = item != null;
         if (label != null)
         {
-            label.text = filled ? EquipmentGenerator.ShortName(item) : (isWeaponSlot ? "무기" : "");
-            label.color = filled ? Color.white : new Color(1f, 1f, 1f, 0.35f);
+            // 빈 칸도 자리 표시 — "칸"으로 인식되도록 (구리다 피드백: 빈 검은 네모 문제)
+            label.text = filled ? EquipmentGenerator.ShortName(item) : (isWeaponSlot ? "무기" : "장비");
+            label.color = filled ? Color.white : new Color(1f, 1f, 1f, 0.30f);
         }
         if (frame != null)
             frame.color = isWeaponSlot

@@ -43,6 +43,7 @@ public class HeroManagePanel : MonoBehaviour
 
     [Header("[장비] 탭")]
     public LobbyEquipSlotUI[] equipSlots = new LobbyEquipSlotUI[4]; // [0]=무기
+    public RectTransform slotStripArea; // 슬롯 줄 배경 — 이 영역 아무 데나 드롭 = 스마트 장착
     public Text detailLine;          // 선택/드래그 결과 안내 (전체 이름)
     public Text storageTitle;        // "보관소 (n)"
     public Transform storageListRoot;
@@ -240,7 +241,7 @@ public class HeroManagePanel : MonoBehaviour
             }
         }
 
-        ShowDetailLine(hero == null ? "영웅을 선택하세요" : "슬롯이나 장비를 탭하면 자세히 표시됩니다");
+        ShowDetailLine(hero == null ? "영웅을 선택하세요" : "");
     }
 
     // ---------- 장비 탭 상호작용 (슬롯/행이 호출) ----------
@@ -266,25 +267,47 @@ public class HeroManagePanel : MonoBehaviour
             return;
         }
 
-        LobbyEquipSlotUI slot = FindUnderPointer<LobbyEquipSlotUI>(e);
-        if (slot == null) return; // 슬롯 밖 — 아무 일 없음
-
         string itemName = row.item.displayName; // Refresh로 행이 파괴되기 전에 확보
-        bool ok;
-        if (row.item is WeaponDefinition weapon)
-            ok = slot.isWeaponSlot && EquipService.EquipWeapon(SelectedHero, weapon);
-        else
-            ok = !slot.isWeaponSlot && EquipService.EquipGearAt(SelectedHero, row.item, slot.slotIndex);
+        bool ok = false;
+        string fail = null;
+
+        // 1) 특정 슬롯 위: 그 칸에 장착/교체 (정밀 조준은 '교체할 칸 지정'에만 필요)
+        LobbyEquipSlotUI slot = FindUnderPointer<LobbyEquipSlotUI>(e);
+        if (slot != null)
+        {
+            if (row.item is WeaponDefinition weapon)
+            {
+                ok = slot.isWeaponSlot && EquipService.EquipWeapon(SelectedHero, weapon);
+                if (!ok) fail = "무기는 무기칸에만 장착할 수 있습니다";
+            }
+            else
+            {
+                ok = !slot.isWeaponSlot && EquipService.EquipGearAt(SelectedHero, row.item, slot.slotIndex);
+                if (!ok) fail = "장비는 자유칸에만 장착할 수 있습니다";
+            }
+        }
+        // 2) 슬롯 줄 영역 아무 데나: 스마트 장착 — 무기는 무기칸(교체), 장비는 빈 칸 (드롭 정밀도 부담 제거)
+        else if (slotStripArea != null &&
+                 RectTransformUtility.RectangleContainsScreenPoint(slotStripArea, e.position, e.pressEventCamera))
+        {
+            if (row.item is WeaponDefinition weapon)
+                ok = EquipService.EquipWeapon(SelectedHero, weapon);
+            else
+            {
+                ok = EquipService.EquipGearAt(SelectedHero, row.item, int.MaxValue); // 빈 칸에 추가
+                if (!ok) fail = "장비칸이 가득 — 교체할 칸 위에 놓아주세요";
+            }
+        }
+        else return; // 슬롯 줄 밖 — 아무 일 없음
 
         if (ok)
         {
             RefreshAll();
-            ShowDetailLine($"장착: {itemName}");
+            ShowDetailLine(itemName); // 상세 줄은 정보 전용 (접두어 없이 전체 이름)
         }
-        else
+        else if (fail != null)
         {
-            ShowDetailLine(row.item is WeaponDefinition ? "무기는 무기칸에만 장착할 수 있습니다"
-                                                        : "장비는 자유칸에만 장착할 수 있습니다");
+            ShowDetailLine(fail);
         }
     }
 
@@ -318,7 +341,7 @@ public class HeroManagePanel : MonoBehaviour
         if (ok)
         {
             RefreshAll();
-            ShowDetailLine($"해제: {name}");
+            ShowDetailLine($"{name} — 보관소로 이동");
         }
     }
 

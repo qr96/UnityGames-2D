@@ -840,15 +840,28 @@ public static class LobbySceneBuilder
         equipGO.SetActive(false);
         panel.equipRoot = equipGO;
 
+        // 슬롯 줄 배경 — 이 영역 아무 데나 드롭하면 스마트 장착 (드롭 정밀도 부담 제거)
+        var stripGO = new GameObject("SlotStrip", typeof(Image));
+        stripGO.transform.SetParent(equipGO.transform, false);
+        var stripImg = stripGO.GetComponent<Image>();
+        stripImg.color = new Color(0f, 0f, 0f, 0.22f);
+        stripImg.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+        stripImg.type = Image.Type.Sliced;
+        PlaceTopLeft(stripGO.GetComponent<RectTransform>(), 20f, 12f, 840f, 130f);
+        panel.slotStripArea = stripGO.GetComponent<RectTransform>();
+
         // 장착 슬롯 줄 (무기 1 + 자유 3 — 축약명 표시, 탭=상세, 드래그=해제)
         for (int i = 0; i < 4; i++)
         {
             bool isWeapon = i == 0;
-            var slotGO = new GameObject(isWeapon ? "WeaponSlot" : $"GearSlot{i - 1}", typeof(Image));
+            var slotGO = new GameObject(isWeapon ? "WeaponSlot" : $"GearSlot{i - 1}", typeof(Image), typeof(Outline));
             slotGO.transform.SetParent(equipGO.transform, false);
             var slotImg = slotGO.GetComponent<Image>();
             slotImg.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
             slotImg.type = Image.Type.Sliced;
+            var outline = slotGO.GetComponent<Outline>();
+            outline.effectColor = isWeapon ? new Color(0.85f, 0.68f, 0.30f, 0.55f) : new Color(0.55f, 0.60f, 0.75f, 0.40f);
+            outline.effectDistance = new Vector2(2f, -2f);
             PlaceTopLeft(slotGO.GetComponent<RectTransform>(), 30f + i * 210f, 22f, 190f, 110f);
 
             var slotUI = slotGO.AddComponent<LobbyEquipSlotUI>();
