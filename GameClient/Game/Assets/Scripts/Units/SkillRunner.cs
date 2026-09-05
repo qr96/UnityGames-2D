@@ -21,6 +21,9 @@ public class SkillRunner : MonoBehaviour
     SkillDefinition skill;
     float timer; // 0에서 시작 → 개전 직후부터 발동 가능
 
+    [Tooltip("전투 시작 시 쿨다운 선충전 비율 — 1 = 한 쿨 완주 후 첫 발동 (개전 즉시 발동 방지). ※임시")]
+    [Range(0f, 1f)] public float startCooldownRatio = 1f;
+
     public bool IsReady => timer <= 0f;
     public SkillDefinition Skill => skill;
 
@@ -31,10 +34,20 @@ public class SkillRunner : MonoBehaviour
         timer = 0f;
     }
 
+    bool wasCombatActive;
+
     void Update()
     {
         if (hero == null || skill == null || hero.IsDead) return;
-        if (!BattleController.CombatActive) return;
+
+        // 전투 시작(교전 개시) 감지 — 개전 시 쿨다운부터 시작 (스킬 발동 개편:
+        // "처음부터 쓰면 안 됨" — 첫 발동은 쿨 완주 후. 쿨감 장비는 첫 발동도 당김)
+        bool combat = BattleController.CombatActive;
+        if (combat && !wasCombatActive)
+            timer = skill.cooldown * startCooldownRatio * CooldownFactor();
+        wasCombatActive = combat;
+
+        if (!combat) return;
 
         if (timer > 0f)
             timer -= Time.deltaTime; // 잡힌 상태에서도 쿨은 돎
