@@ -7,13 +7,22 @@ using UnityEngine;
 /// </summary>
 public class CameraController : MonoBehaviour
 {
+    [Tooltip("페이즈 줌 값 — 3:4 기준 세로 반높이 (다른 비율에서는 가로 폭이 유지되도록 자동 환산)")]
     public float exploreSize = 10.5f;
     public float battleSize = 8f;
     public float moveSpeed = 3f;
 
+    // 해상도 대응: 줌 값을 '3:4에서의 세로 반높이'로 해석 → 가로 반폭 = 값 × 0.75 불변.
+    // 실제 orthographicSize = 반폭 / 현재 aspect — 창이 세로로 길어지면 자동으로 멀어짐.
+    const float RefAspect = 3f / 4f;
+
     Camera cam;
     Vector3 targetPos;
-    float targetSize;
+    float targetHalfWidth; // 목표 가로 반폭 (비율 무관 불변량)
+
+    float TargetOrthoSize => cam != null && cam.aspect > 0f
+        ? targetHalfWidth / cam.aspect
+        : targetHalfWidth / RefAspect;
 
     void Start()
     {
@@ -21,7 +30,7 @@ public class CameraController : MonoBehaviour
         if (cam != null)
         {
             targetPos = cam.transform.position;
-            targetSize = cam.orthographicSize;
+            targetHalfWidth = cam.orthographicSize * cam.aspect; // 현재 프레이밍의 반폭 승계
         }
 
         if (RunManager.Instance != null)
@@ -65,19 +74,19 @@ public class CameraController : MonoBehaviour
     public void SnapTo(Vector2 pos, float size)
     {
         targetPos = new Vector3(pos.x, pos.y, -10f);
-        targetSize = size;
+        targetHalfWidth = size * RefAspect; // 3:4 기준 값 → 반폭
         if (cam == null) cam = Camera.main;
         if (cam != null)
         {
             cam.transform.position = targetPos;
-            cam.orthographicSize = size;
+            cam.orthographicSize = TargetOrthoSize;
         }
     }
 
     void SetTarget(Vector2 pos, float size)
     {
         targetPos = new Vector3(pos.x, pos.y, -10f);
-        targetSize = size;
+        targetHalfWidth = size * RefAspect; // 3:4 기준 값 → 반폭
     }
 
     void LateUpdate()
@@ -85,6 +94,7 @@ public class CameraController : MonoBehaviour
         if (cam == null) return;
         float t = 1f - Mathf.Exp(-moveSpeed * Time.deltaTime);
         cam.transform.position = Vector3.Lerp(cam.transform.position, targetPos, t);
-        cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, targetSize, t);
+        // 목표를 매 프레임 현재 비율로 환산 — 창 리사이즈에도 즉시 대응
+        cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, TargetOrthoSize, t);
     }
 }

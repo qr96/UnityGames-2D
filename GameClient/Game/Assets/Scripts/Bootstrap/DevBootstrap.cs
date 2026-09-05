@@ -124,7 +124,7 @@ public class DevBootstrap : MonoBehaviour
             cam = go.GetComponent<Camera>();
         }
         cam.orthographic = true;
-        cam.orthographicSize = 8f;
+        cam.orthographicSize = 8f; // 초기값 — 이후 CameraController가 페이즈 줌 + 비율 환산 담당
         cam.transform.position = new Vector3(0f, 0f, -10f);
         cam.clearFlags = CameraClearFlags.SolidColor;
         cam.backgroundColor = new Color(0.12f, 0.12f, 0.17f);

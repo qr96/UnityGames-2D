@@ -29,6 +29,14 @@ public static class LobbySceneBuilder
         scaler.referenceResolution = new Vector2(1080f, 1440f);
         scaler.matchWidthOrHeight = 0f; // 폭 기준 (S() 스케일과 일치)
         EditorUtility.SetDirty(scaler);
+
+        // 카메라도 같은 규칙 (가로 폭 고정) — 로비 배경/배회 영웅의 비율 대응
+        Camera cam = Camera.main;
+        if (cam != null && cam.GetComponent<FixedWidthCamera>() == null)
+        {
+            cam.gameObject.AddComponent<FixedWidthCamera>();
+            EditorUtility.SetDirty(cam.gameObject);
+        }
     }
 
     /// <summary>상세/카드 공용 — 회색 소자 라벨 (x=28 고정)</summary>
