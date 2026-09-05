@@ -36,6 +36,13 @@ public abstract class Unit : MonoBehaviour
     protected virtual void OnEnable() => UnitRegistry.Register(this);
     protected virtual void OnDisable() => UnitRegistry.Unregister(this);
 
+    /// <summary>경기장 클램프 — 배치/전투 중 유닛이 UI 존/화면 밖으로 못 나가게 (BattleArena)</summary>
+    protected virtual void LateUpdate()
+    {
+        if (IsDead || !BattleArena.ShouldClamp) return;
+        transform.position = BattleArena.Clamp(transform.position);
+    }
+
     public void SetMaxHP(float value)
     {
         MaxHP = value;

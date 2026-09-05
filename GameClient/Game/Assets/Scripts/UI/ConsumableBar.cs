@@ -6,9 +6,9 @@ using UnityEngine.EventSystems;
 /// 전투 중 하단 소모품 바 (4칸). 보유 소모품이 '오른쪽부터' 채워짐.
 /// 현재 소모품은 포션 1종 — 전투당 지급 개수만큼 칸에 표시 (GDD 4).
 ///
-/// 사용 규칙:
-///  - 바 밖으로 던지면 그 순간 무조건 소모. 병이 포물선으로 날아간 뒤
-///    '착탄 시점'에 범위 안의 영웅을 회복 (GDD 4: 착탄 지점 주변)
+/// 사용 규칙 (즉발 개편):
+///  - 바 밖에 놓으면 그 순간 소모 + '즉시' 그 지점 범위 안의 영웅 회복
+///    (투척 비행시간 제거 — 조준 드래그와 범위 원은 유지)
 ///  - 바(슬롯) 위에 도로 놓는 경우에만 복구 (소모 없음)
 ///  - 드래그 중 범위 원 표시: 회복될 대상 있음 = 초록 / 없음 = 회색 (조준 보조용)
 ///
@@ -21,9 +21,8 @@ public class ConsumableBar : MonoBehaviour
     public float healAmount = 40f;
     public float healRadius = 1.8f;
 
-    [Header("투척 연출")]
-    public float throwDuration = 0.45f;   // 병이 날아가는 시간 (착탄 후 회복 적용)
-    public float impactFlashTime = 0.25f; // 착탄 시 범위 표시 시간
+    [Header("사용 연출 (즉발 — 비행 없음)")]
+    public float impactFlashTime = 0.25f; // 사용 지점 범위 표시 시간
 
     static readonly Color RangeOkColor = new Color(0.45f, 1f, 0.6f, 0.28f);
     static readonly Color RangeNoTargetColor = new Color(0.7f, 0.7f, 0.7f, 0.16f);
@@ -72,7 +71,7 @@ public class ConsumableBar : MonoBehaviour
         Render();
     }
 
-    /// <summary>슬롯의 포션 투척. 바 위에 도로 놓는 경우에만 복구, 그 외에는 즉시 소모 후 투척 연출.</summary>
+    /// <summary>슬롯의 포션 사용. 바 위에 도로 놓는 경우에만 복구, 그 외에는 소모 + 즉시 발동 (즉발 개편).</summary>
     public bool TryUseAt(int slotIndex, PointerEventData e)
     {
         HideRange();
@@ -81,18 +80,17 @@ public class ConsumableBar : MonoBehaviour
         // 슬롯/바 위에 도로 넣기 = 복구 (유일한 취소 경로)
         if (IsPointerOverBar(e)) return false;
 
-        // 바 밖 = 던지는 순간 무조건 소모. 병이 날아간 뒤 착탄 시점에 회복 적용.
+        // 바 밖 = 놓는 순간 소모 + 그 지점에 즉시 회복 (비행시간 없음)
         Vector3 target = ScreenToWorld(e.position);
-        Vector3 start = ScreenToWorld(slots[slotIndex].transform.position); // 슬롯에서 날아감
 
         potionCount--;
         Render();
 
-        UnitFactory.SpawnPotionProjectile(start, target, throwDuration, () => Impact(target));
+        Impact(target);
         return true;
     }
 
-    /// <summary>착탄: 범위 표시를 잠깐 번쩍이고, 그 순간 범위 안의 영웅을 회복</summary>
+    /// <summary>발동: 범위 표시를 잠깐 번쩍이고, 그 순간 범위 안의 영웅을 회복</summary>
     void Impact(Vector3 target)
     {
         // 착탄 연출 (자리표시자 — 아트 시 교체)
