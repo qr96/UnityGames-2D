@@ -51,7 +51,7 @@ public class HeroStatusCard : MonoBehaviour
         if (group != null) group.alpha = dead ? 0.35f : 1f;
 
         float ratio = Mathf.Clamp01(hero.HPRatio);
-        if (hpText != null) hpText.text = dead ? "전사" : $"{hero.CurrentHP:0} / {hero.MaxHP:0}";
+        if (hpText != null) hpText.text = dead ? "전사" : $"{hero.CurrentHP:0}/{hero.MaxHP:0}";
         if (hpFill != null)
         {
             hpFill.fillAmount = dead ? 0f : ratio;

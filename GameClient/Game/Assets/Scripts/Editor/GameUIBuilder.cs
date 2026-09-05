@@ -178,40 +178,40 @@ public static class GameUIBuilder
         hud.startButton = startBtn.gameObject;
 
         // ================= 상단 영웅 상태 바 (배치/전투 — HeroStatusBar가 표시 제어) =================
+        // UI 피드백 반영: 얇고 간결 / 배경·테두리 최소 / 전투 영역 최대 확보
 
         var statusGO = new GameObject("HeroStatusBar", typeof(RectTransform));
         statusGO.transform.SetParent(root, false);
         var statusRT = statusGO.GetComponent<RectTransform>();
-        SetAnchored(statusRT, new Vector2(0.5f, 1f), new Vector2(0f, -212f), new Vector2(1060f, 150f));
+        SetAnchored(statusRT, new Vector2(0.5f, 1f), new Vector2(0f, -186f), new Vector2(1040f, 92f));
         var statusBar = statusGO.AddComponent<HeroStatusBar>();
 
-        const float cardW = 204f, cardGap = 10f;
-        float cardsW = 5 * cardW + 4 * cardGap;
-        for (int i = 0; i < 5; i++)
+        const float cardW = 250f, cardH = 92f, cardGap = 12f;
+        float cardsW = 4 * cardW + 3 * cardGap;
+        for (int i = 0; i < 4; i++)
         {
-            var cardGO = MakeImage(statusGO.transform, $"HeroCard{i}", new Color(0.08f, 0.10f, 0.15f, 0.92f), rounded: true);
+            var cardGO = MakeImage(statusGO.transform, $"HeroCard{i}", new Color(0f, 0f, 0f, 0.30f), rounded: true);
             var cdrt = cardGO.GetComponent<RectTransform>();
             SetAnchored(cdrt, new Vector2(0.5f, 0.5f),
                 new Vector2(-cardsW / 2f + cardW / 2f + i * (cardW + cardGap), 0f),
-                new Vector2(cardW, 150f));
+                new Vector2(cardW, cardH));
             var card = cardGO.AddComponent<HeroStatusCard>();
             card.group = cardGO.AddComponent<CanvasGroup>();
             card.group.blocksRaycasts = false; // 전장 클릭/드래그 방해 금지
 
-            // 색점 + 이름 (윗줄)
+            // 윗줄: 색점 + 이름
             var dotGO = MakeImage(cardGO.transform, "Dot", Color.white, rounded: true);
-            var dotRT = dotGO.GetComponent<RectTransform>();
-            SetAnchored(dotRT, new Vector2(0f, 1f), new Vector2(24f, -26f), new Vector2(24f, 24f));
+            SetAnchored(dotGO.GetComponent<RectTransform>(), new Vector2(0f, 1f), new Vector2(20f, -16f), new Vector2(18f, 18f));
             card.colorDot = dotGO.GetComponent<Image>();
 
-            Text nameT = MakeText(cardGO.transform, "Name", "영웅", 24);
+            Text nameT = MakeText(cardGO.transform, "Name", "영웅", 22);
             nameT.alignment = TextAnchor.MiddleLeft;
-            SetAnchored(nameT.rectTransform, new Vector2(0f, 1f), new Vector2(118f, -26f), new Vector2(150f, 30f));
+            SetAnchored(nameT.rectTransform, new Vector2(0f, 1f), new Vector2(120f, -16f), new Vector2(170f, 26f));
             card.nameText = nameT;
 
-            // HP 바 + 수치 (가운데)
+            // 가운데: HP 바 (수치는 바 안 오버레이 — 얇은 카드)
             var hpBgGO = MakeImage(cardGO.transform, "HpBg", new Color(0f, 0f, 0f, 0.5f), rounded: true);
-            SetAnchored(hpBgGO.GetComponent<RectTransform>(), new Vector2(0.5f, 1f), new Vector2(0f, -62f), new Vector2(176f, 18f));
+            SetAnchored(hpBgGO.GetComponent<RectTransform>(), new Vector2(0.5f, 1f), new Vector2(0f, -44f), new Vector2(226f, 22f));
             var hpFillGO = MakeImage(hpBgGO.transform, "HpFill", new Color(0.35f, 0.85f, 0.45f), rounded: true);
             var hfrt = hpFillGO.GetComponent<RectTransform>();
             hfrt.anchorMin = Vector2.zero;
@@ -223,14 +223,18 @@ public static class GameUIBuilder
             hpFillImg.fillMethod = Image.FillMethod.Horizontal;
             card.hpFill = hpFillImg;
 
-            Text hpT = MakeText(cardGO.transform, "HpText", "0 / 0", 22);
-            SetAnchored(hpT.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -86f), new Vector2(180f, 26f));
+            Text hpT = MakeText(hpBgGO.transform, "HpText", "0/0", 18);
+            var hptrt = hpT.rectTransform;
+            hptrt.anchorMin = Vector2.zero;
+            hptrt.anchorMax = Vector2.one;
+            hptrt.offsetMin = hptrt.offsetMax = Vector2.zero;
+            hpT.raycastTarget = false;
             card.hpText = hpT;
 
-            // 스킬 쿨 (아랫줄): 카드 전폭 게이지 + 그 위에 스킬 이름 (가독 개선)
-            var skBgGO = MakeImage(cardGO.transform, "SkillBg", new Color(0f, 0f, 0f, 0.55f), rounded: true);
-            SetAnchored(skBgGO.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0f, 22f), new Vector2(176f, 30f));
-            var skFillGO = MakeImage(skBgGO.transform, "SkillFill", new Color(0.95f, 0.8f, 0.4f), rounded: true);
+            // 아랫줄: 스킬 쿨 게이지 (전폭 얇게) + 이름 오버레이
+            var skBgGO = MakeImage(cardGO.transform, "SkillBg", new Color(0f, 0f, 0f, 0.5f), rounded: true);
+            SetAnchored(skBgGO.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0f, 14f), new Vector2(226f, 18f));
+            var skFillGO = MakeImage(skBgGO.transform, "SkillFill", new Color(0.85f, 0.68f, 0.25f), rounded: true);
             var sfrt = skFillGO.GetComponent<RectTransform>();
             sfrt.anchorMin = Vector2.zero;
             sfrt.anchorMax = Vector2.one;
@@ -241,8 +245,7 @@ public static class GameUIBuilder
             skFillImg.fillMethod = Image.FillMethod.Horizontal;
             card.skillFill = skFillImg;
 
-            Text skT = MakeText(skBgGO.transform, "SkillName", "-", 20);
-            skT.color = Color.white;
+            Text skT = MakeText(skBgGO.transform, "SkillName", "-", 17);
             var skrt = skT.rectTransform;
             skrt.anchorMin = Vector2.zero;
             skrt.anchorMax = Vector2.one;
@@ -259,16 +262,19 @@ public static class GameUIBuilder
         var barGO = new GameObject("ConsumableBar", typeof(RectTransform));
         barGO.transform.SetParent(root, false);
         var barRT = barGO.GetComponent<RectTransform>();
-        SetAnchored(barRT, new Vector2(0.5f, 0f), new Vector2(0f, 110f), new Vector2(680f, 150f));
+        SetAnchored(barRT, new Vector2(0.5f, 0f), new Vector2(0f, 110f), new Vector2(820f, 150f));
         var bar = barGO.AddComponent<ConsumableBar>();
         hud.consumableBar = bar;
 
         Sprite knob = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
-        const float slotSize = 140f, gap = 24f;
-        float totalW = 4 * slotSize + 3 * gap;
-        for (int i = 0; i < 4; i++)
+        const float slotSize = 140f, gap = 18f; // 드래그 충분한 크기 유지 (UI 피드백)
+        float totalW = 5 * slotSize + 4 * gap;
+        for (int i = 0; i < 5; i++)
         {
             var slot = MakeItemSlot<ConsumableSlot>(barGO.transform, $"ConsumableSlot{i}", knob, 26);
+            var slotOutline = slot.gameObject.AddComponent<Outline>();
+            slotOutline.effectColor = new Color(0.55f, 0.60f, 0.75f, 0.35f); // 얇은 프레임
+            slotOutline.effectDistance = new Vector2(2f, -2f);
             var srt = slot.GetComponent<RectTransform>();
             SetAnchored(srt, new Vector2(0.5f, 0.5f),
                 new Vector2(-totalW / 2f + slotSize / 2f + i * (slotSize + gap), 0f),

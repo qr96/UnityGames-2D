@@ -9,7 +9,7 @@ using System.Collections.Generic;
 /// </summary>
 public class RunState
 {
-    public const int MaxPartySize = 5;
+    public const int MaxPartySize = 4; // 5→4 (파티 규모 확정)
 
     /// <summary>※ 구 로비(SortiePanel) 호환용 — 출전 인원 개념이 로스터 기반(1~5명)으로 바뀌어
     /// 더 이상 로직에서 사용하지 않음. 로비 개편 시 참조 정리 후 삭제 예정.</summary>

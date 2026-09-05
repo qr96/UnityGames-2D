@@ -9,7 +9,7 @@ using UnityEngine;
 public class HeroStatusBar : MonoBehaviour
 {
     [Header("UI 연결 (빌더가 자동 연결)")]
-    public HeroStatusCard[] cards = new HeroStatusCard[5]; // 최대 파티 5
+    public HeroStatusCard[] cards = new HeroStatusCard[4]; // 최대 파티 4
 
     readonly List<Hero> bound = new List<Hero>();
 

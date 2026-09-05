@@ -165,18 +165,26 @@ public class ConsumableBar : MonoBehaviour
 
     bool IsFilled(int slotIndex) => slotIndex == PotionSlot && potionCount > 0;
 
+    static readonly Color FilledBg = new Color(0.12f, 0.14f, 0.20f, 0.92f);
+    static readonly Color EmptyBg = new Color(0f, 0f, 0f, 0.10f); // 빈 슬롯 = 얇은 프레임 (Outline은 빌더가)
+
     void Render()
     {
         for (int i = 0; i < slots.Count; i++)
         {
             bool isPotion = i == PotionSlot;
-            slots[i].SetFilled(isPotion && potionCount > 0, isPotion ? "회복" : "");
+            bool filled = isPotion && potionCount > 0;
+            slots[i].SetFilled(filled, isPotion ? "회복" : "");
+
+            // 빈 슬롯은 진한 사각형 대신 투명 배경 + 테두리만 (UI 피드백)
+            var bg = slots[i].GetComponent<UnityEngine.UI.Image>();
+            if (bg != null) bg.color = filled ? FilledBg : EmptyBg;
 
             // 개수 뱃지 (빌더가 슬롯마다 "CountBadge" Text 생성)
             var badge = slots[i].transform.Find("CountBadge");
             var badgeText = badge != null ? badge.GetComponent<UnityEngine.UI.Text>() : null;
             if (badgeText != null)
-                badgeText.text = isPotion ? $"x{potionCount}" : "";
+                badgeText.text = filled ? $"x{potionCount}" : "";
         }
     }
 
