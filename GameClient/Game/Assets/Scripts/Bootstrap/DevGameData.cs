@@ -32,14 +32,15 @@ public static class DevGameData
             MakeSkill("heal", "회복", SkillKind.Heal, SkillActivation.Auto, WeaponRequirement.MagicTool,
                 cooldown: 10f, radius: 5f, damagePercent: 300f, effectValue: 50f), // HP 50% 이하 아군, 공격력 300% 회복
 
-            // ---- 내려놓기형 (무기 조건 없음) ----
-            MakeSkill("battlecry", "전투 함성", SkillKind.BattleCry, SkillActivation.OnRelease, WeaponRequirement.None,
+            // ---- 지원형 (무기 조건 없음) — 스킬 발동 개편: 내려놓기 → 자동 (쿨 참 + 조건 = 즉시)
+            //      내려놓기 '시스템'은 유지 (SkillActivation.OnRelease — 추후 스킬용)
+            MakeSkill("battlecry", "전투 함성", SkillKind.BattleCry, SkillActivation.Auto, WeaponRequirement.None,
                 cooldown: 15f, radius: 3.5f, duration: 5f, effectValue: 25f, effectValue2: 25f), // 공격력/공속 +25%
-            MakeSkill("shockwave", "충격파", SkillKind.Shockwave, SkillActivation.OnRelease, WeaponRequirement.None,
+            MakeSkill("shockwave", "충격파", SkillKind.Shockwave, SkillActivation.Auto, WeaponRequirement.None,
                 cooldown: 10f, radius: 3.0f, damagePercent: 150f, effectValue: 2.5f), // 밀침 2.5
-            MakeSkill("barrier", "보호막", SkillKind.Barrier, SkillActivation.OnRelease, WeaponRequirement.None,
+            MakeSkill("barrier", "보호막", SkillKind.Barrier, SkillActivation.Auto, WeaponRequirement.None,
                 cooldown: 14f, radius: 3.5f, duration: 6f, effectValue: 400f), // 공격력 400% 보호막
-            MakeSkill("firstaid", "응급 치료", SkillKind.FirstAid, SkillActivation.OnRelease, WeaponRequirement.None,
+            MakeSkill("firstaid", "응급 치료", SkillKind.FirstAid, SkillActivation.Auto, WeaponRequirement.None,
                 cooldown: 8f, radius: 4f, damagePercent: 400f), // 최저 HP 아군 공격력 400% 회복
         };
         return pool;

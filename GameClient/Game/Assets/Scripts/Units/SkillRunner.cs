@@ -73,23 +73,27 @@ public class SkillRunner : MonoBehaviour
 
     // ---------- 자동 발동 조건 ----------
 
+    /// <summary>
+    /// 자동 발동 조건 — "쿨 참 + 사거리 내 유효 대상 = 즉시 발동" (스킬 발동 개편).
+    /// 영웅의 평타 대상(CurrentTarget)에 묶지 않고 스킬이 직접 탐색:
+    /// 평타 교전 성립을 기다리느라 쿨이 놀던 문제(특히 장사거리 스킬) 해소.
+    /// 처형(HP 조건)·회복(부상자 조건)은 조건 자체가 스킬 정체성이라 유지.
+    /// </summary>
     bool AutoConditionMet()
     {
-        Unit target = hero.CurrentTarget;
-
         switch (skill.kind)
         {
             case SkillKind.PowerStrike:
             case SkillKind.Snipe:
             case SkillKind.Fireball:
-                return target != null && DistTo(target) <= skill.range;
+                return FindNearestEnemy(skill.range) != null;
 
             case SkillKind.Sweep:
-                return target != null && DistTo(target) <= skill.radius;
+                return FindNearestEnemy(skill.radius) != null;
 
             case SkillKind.Execute:
-                return target != null && DistTo(target) <= skill.range
-                    && target.HPRatio * 100f <= skill.effectValue;
+                return FindNearestEnemy(skill.range,
+                    u => u.HPRatio * 100f <= skill.effectValue) != null;
 
             case SkillKind.Heal:
                 foreach (Unit u in UnitRegistry.GetAll(Team.Hero))
@@ -97,9 +101,45 @@ public class SkillRunner : MonoBehaviour
                         return true;
                 return false;
 
+            // ---- 지원형 (구 내려놓기 — 스킬 발동 개편) ----
+            case SkillKind.BattleCry:
+                return true; // 버프 대상에 시전자 포함 — 쿨 차면 즉시
+
+            case SkillKind.Shockwave:
+                return FindNearestEnemy(skill.radius) != null; // 맞을 적이 있을 때
+
+            case SkillKind.Barrier:
+                return true; // 보호막은 선제 사용이 정상 — 쿨 차면 즉시
+
+            case SkillKind.FirstAid:
+                // 반경 내 '다친' 아군이 있을 때 (만피에 낭비 방지)
+                foreach (Unit u in UnitRegistry.GetAll(Team.Hero))
+                    if (u.HPRatio < 0.999f && DistTo(u) <= skill.radius)
+                        return true;
+                return false;
+
             default:
-                return false; // 내려놓기형은 자동 발동 없음
+                return false; // 내려놓기형(현재 0종 — 시스템 유지)은 자동 발동 없음
         }
+    }
+
+    /// <summary>사거리 내 가장 가까운 적 (조건 선택) — 발동 판정과 실행이 같은 함수를 써서 대상 불일치 없음</summary>
+    Unit FindNearestEnemy(float range, System.Func<Unit, bool> filter = null)
+    {
+        Unit best = null;
+        float bestDist = float.MaxValue;
+        foreach (Unit u in UnitRegistry.GetAll(Team.Enemy))
+        {
+            if (u == null || u.IsDead) continue;
+            if (filter != null && !filter(u)) continue;
+            float d = DistTo(u);
+            if (d <= range && d < bestDist)
+            {
+                bestDist = d;
+                best = u;
+            }
+        }
+        return best;
     }
 
     float DistTo(Unit u) => Vector2.Distance(hero.transform.position, u.transform.position);
@@ -115,9 +155,9 @@ public class SkillRunner : MonoBehaviour
         {
             case SkillKind.PowerStrike:
                 {
-                    // 현재 대상 / damagePercent% 단일 강타
-                    Unit target = hero.CurrentTarget;
-                    if (target == null || target.IsDead) break;
+                    // 사거리 내 최근접 적 / damagePercent% 단일 강타
+                    Unit target = FindNearestEnemy(skill.range);
+                    if (target == null) break;
                     target.TakeDamage(hero.AttackPower * skill.damagePercent / 100f
                         * hero.DamageMultVsTarget(target));
                     if (target.IsDead) hero.NotifyKill(); // 처치 크레딧 (BLOODTHIRST)
@@ -128,8 +168,8 @@ public class SkillRunner : MonoBehaviour
 
             case SkillKind.Sweep:
                 {
-                    // 현재 대상 방향 전방 부채꼴(±60°) radius / damagePercent%
-                    Unit target = hero.CurrentTarget;
+                    // 최근접 적 방향 전방 부채꼴(±60°) radius / damagePercent%
+                    Unit target = FindNearestEnemy(skill.radius);
                     if (target == null) break;
                     Vector2 dir = (target.transform.position - hero.transform.position).normalized;
                     float dmg = hero.AttackPower * skill.damagePercent / 100f;
@@ -150,9 +190,9 @@ public class SkillRunner : MonoBehaviour
 
             case SkillKind.Snipe:
                 {
-                    // 현재 대상 / damagePercent% 강력한 단일 투사체
-                    Unit target = hero.CurrentTarget;
-                    if (target == null || target.IsDead) break;
+                    // 사거리 내 최근접 적 / damagePercent% 강력한 단일 투사체
+                    Unit target = FindNearestEnemy(skill.range);
+                    if (target == null) break;
                     UnitFactory.SpawnProjectile(hero.transform.position, target,
                         hero.AttackPower * skill.damagePercent / 100f
                             * hero.DamageMultVsTarget(target),
@@ -163,9 +203,9 @@ public class SkillRunner : MonoBehaviour
 
             case SkillKind.Fireball:
                 {
-                    // 현재 대상에게 투사체 → 명중 시 대상 + 주변 radius 적에게 damagePercent%
-                    Unit target = hero.CurrentTarget;
-                    if (target == null || target.IsDead) break;
+                    // 사거리 내 최근접 적에게 투사체 → 명중 시 대상 + 주변 radius 적에게 damagePercent%
+                    Unit target = FindNearestEnemy(skill.range);
+                    if (target == null) break;
                     float dmg = hero.AttackPower * skill.damagePercent / 100f;
                     float splash = skill.radius;
                     // 폭발은 본체 명중 대상의 생사와 무관하게 발생 — onHit(생존)/onKill(처치) 양쪽에 연결
@@ -190,9 +230,10 @@ public class SkillRunner : MonoBehaviour
 
             case SkillKind.Execute:
                 {
-                    // HP 임계 이하의 현재 대상 / damagePercent% 처형타
-                    Unit target = hero.CurrentTarget;
-                    if (target == null || target.IsDead) break;
+                    // 사거리 내 HP 임계 이하 최근접 적 / damagePercent% 처형타 (판정과 동일 탐색)
+                    Unit target = FindNearestEnemy(skill.range,
+                        u => u.HPRatio * 100f <= skill.effectValue);
+                    if (target == null) break;
                     target.TakeDamage(hero.AttackPower * skill.damagePercent / 100f
                         * hero.DamageMultVsTarget(target));
                     if (target.IsDead) hero.NotifyKill();
