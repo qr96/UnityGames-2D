@@ -35,6 +35,11 @@ public class ConsumableBar : MonoBehaviour
     Transform rangeIndicator;
     SpriteRenderer rangeSprite;
 
+    // 범위 내 영웅 강조 (드래그 피드백 — 전장 링 + 상단 HUD 동기)
+    static readonly Color HeroRingColor = new Color(0.45f, 1f, 0.6f, 0.5f);
+    readonly List<Transform> heroRings = new List<Transform>();
+    readonly HashSet<Hero> highlighted = new HashSet<Hero>();
+
     void Awake()
     {
         EnsureSlots();
@@ -115,17 +120,45 @@ public class ConsumableBar : MonoBehaviour
         rangeIndicator.position = world;
         rangeIndicator.localScale = Vector3.one * (healRadius * 2f);
 
+        List<Unit> inRange = GetHeroesInRange(world);
         if (rangeSprite != null)
-            rangeSprite.color = GetHeroesInRange(world).Count > 0 ? RangeOkColor : RangeNoTargetColor;
+            rangeSprite.color = inRange.Count > 0 ? RangeOkColor : RangeNoTargetColor;
+
+        // 범위 내 영웅 강조 — 전장 링(발밑) + 상단 HUD 카드 동시 (UI 피드백)
+        highlighted.Clear();
+        for (int i = 0; i < inRange.Count; i++)
+        {
+            if (heroRings.Count <= i) CreateHeroRing();
+            heroRings[i].gameObject.SetActive(true);
+            heroRings[i].position = inRange[i].transform.position;
+            heroRings[i].localScale = Vector3.one * (inRange[i].radius * 2f + 0.5f);
+            if (inRange[i] is Hero h) highlighted.Add(h);
+        }
+        for (int i = inRange.Count; i < heroRings.Count; i++)
+            heroRings[i].gameObject.SetActive(false);
+        if (HeroStatusBar.Instance != null)
+            HeroStatusBar.Instance.SetHighlights(highlighted);
     }
 
     public void HideRange()
     {
         if (rangeIndicator != null)
             rangeIndicator.gameObject.SetActive(false);
+        foreach (var ring in heroRings)
+            if (ring != null) ring.gameObject.SetActive(false);
+        if (HeroStatusBar.Instance != null)
+            HeroStatusBar.Instance.ClearHighlights();
     }
 
     /// <summary>회복 범위 원 (자리표시자 — 아트 시 이 함수만 교체)</summary>
+    void CreateHeroRing()
+    {
+        var go = new GameObject("PotionHeroRing");
+        UnitFactory.MakeVisual(go.transform, UnitFactory.Circle, HeroRingColor, 1f, sortingOrder: 4);
+        go.SetActive(false);
+        heroRings.Add(go.transform);
+    }
+
     void CreateRangeIndicator()
     {
         var go = new GameObject("PotionRangeIndicator");

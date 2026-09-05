@@ -139,7 +139,7 @@ public class GameHUD : MonoBehaviour
                 break;
 
             case RunPhase.Battle:
-                SetLabel($"전투 — {locName}");
+                SetLabel(""); // 전투 중 상단 라벨 제거 (UI 피드백 — 상태 바가 대체, 전투 영역 확보)
                 break;
 
             case RunPhase.Loot:

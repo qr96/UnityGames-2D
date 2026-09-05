@@ -196,6 +196,7 @@ public static class GameUIBuilder
                 new Vector2(-cardsW / 2f + cardW / 2f + i * (cardW + cardGap), 0f),
                 new Vector2(cardW, cardH));
             var card = cardGO.AddComponent<HeroStatusCard>();
+            card.background = cardGO.GetComponent<Image>(); // 포션 범위 강조용
             card.group = cardGO.AddComponent<CanvasGroup>();
             card.group.blocksRaycasts = false; // 전장 클릭/드래그 방해 금지
 
@@ -206,12 +207,12 @@ public static class GameUIBuilder
 
             Text nameT = MakeText(cardGO.transform, "Name", "영웅", 22);
             nameT.alignment = TextAnchor.MiddleLeft;
-            SetAnchored(nameT.rectTransform, new Vector2(0f, 1f), new Vector2(120f, -16f), new Vector2(170f, 26f));
+            SetAnchored(nameT.rectTransform, new Vector2(0f, 1f), new Vector2(104f, -16f), new Vector2(140f, 26f));
             card.nameText = nameT;
 
             // 가운데: HP 바 (수치는 바 안 오버레이 — 얇은 카드)
             var hpBgGO = MakeImage(cardGO.transform, "HpBg", new Color(0f, 0f, 0f, 0.5f), rounded: true);
-            SetAnchored(hpBgGO.GetComponent<RectTransform>(), new Vector2(0.5f, 1f), new Vector2(0f, -44f), new Vector2(226f, 22f));
+            SetAnchored(hpBgGO.GetComponent<RectTransform>(), new Vector2(0f, 0.5f), new Vector2(101f, -14f), new Vector2(170f, 22f));
             var hpFillGO = MakeImage(hpBgGO.transform, "HpFill", new Color(0.35f, 0.85f, 0.45f), rounded: true);
             var hfrt = hpFillGO.GetComponent<RectTransform>();
             hfrt.anchorMin = Vector2.zero;
@@ -231,21 +232,34 @@ public static class GameUIBuilder
             hpT.raycastTarget = false;
             card.hpText = hpT;
 
-            // 아랫줄: 스킬 쿨 게이지 (전폭 얇게) + 이름 오버레이
-            var skBgGO = MakeImage(cardGO.transform, "SkillBg", new Color(0f, 0f, 0f, 0.5f), rounded: true);
-            SetAnchored(skBgGO.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0f, 14f), new Vector2(226f, 18f));
-            var skFillGO = MakeImage(skBgGO.transform, "SkillFill", new Color(0.85f, 0.68f, 0.25f), rounded: true);
-            var sfrt = skFillGO.GetComponent<RectTransform>();
-            sfrt.anchorMin = Vector2.zero;
-            sfrt.anchorMax = Vector2.one;
-            sfrt.offsetMin = new Vector2(2f, 2f);
-            sfrt.offsetMax = new Vector2(-2f, -2f);
-            var skFillImg = skFillGO.GetComponent<Image>();
-            skFillImg.type = Image.Type.Filled;
-            skFillImg.fillMethod = Image.FillMethod.Horizontal;
-            card.skillFill = skFillImg;
+            // 우측: 스킬 아이콘 + 원형 쿨타임 오버레이 (자동 발동 — 버튼 아님, UI 피드백)
+            Sprite iconKnob = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
+            var skIconGO = new GameObject("SkillIcon", typeof(Image));
+            skIconGO.transform.SetParent(cardGO.transform, false);
+            var skIconImg = skIconGO.GetComponent<Image>();
+            skIconImg.sprite = iconKnob;
+            skIconImg.raycastTarget = false;
+            SetAnchored(skIconGO.GetComponent<RectTransform>(), new Vector2(1f, 0.5f), new Vector2(-36f, 0f), new Vector2(52f, 52f));
+            card.skillIcon = skIconImg;
 
-            Text skT = MakeText(skBgGO.transform, "SkillName", "-", 17);
+            var skOverlayGO = new GameObject("SkillCdOverlay", typeof(Image));
+            skOverlayGO.transform.SetParent(skIconGO.transform, false);
+            var skOverlayImg = skOverlayGO.GetComponent<Image>();
+            skOverlayImg.sprite = iconKnob;
+            skOverlayImg.color = new Color(0f, 0f, 0f, 0.65f);
+            skOverlayImg.type = Image.Type.Filled;
+            skOverlayImg.fillMethod = Image.FillMethod.Radial360;
+            skOverlayImg.fillOrigin = (int)Image.Origin360.Top;
+            skOverlayImg.fillClockwise = false; // 시계 반대로 걷히며 준비
+            skOverlayImg.raycastTarget = false;
+            var sorT = skOverlayGO.GetComponent<RectTransform>();
+            sorT.anchorMin = Vector2.zero;
+            sorT.anchorMax = Vector2.one;
+            sorT.offsetMin = sorT.offsetMax = Vector2.zero;
+            card.skillFill = skOverlayImg;
+
+            Text skT = MakeText(skIconGO.transform, "SkillMono", "-", 22);
+            skT.fontStyle = FontStyle.Bold;
             var skrt = skT.rectTransform;
             skrt.anchorMin = Vector2.zero;
             skrt.anchorMax = Vector2.one;

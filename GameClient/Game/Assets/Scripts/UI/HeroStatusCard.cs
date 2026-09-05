@@ -11,8 +11,10 @@ public class HeroStatusCard : MonoBehaviour
     public Text nameText;
     public Text hpText;
     public Image hpFill;     // type=Filled(Horizontal)
-    public Text skillText;
-    public Image skillFill;  // 쿨다운 진행 (type=Filled)
+    public Text skillText;   // 스킬 모노그램 (첫 글자 — 아이콘 아트 전 자리표시)
+    public Image skillIcon;  // 스킬 아이콘 원 (자동 발동 — 버튼 아님)
+    public Image skillFill;  // 쿨다운 오버레이 (Radial360, 남은 쿨만큼 덮음)
+    public Image background;
     public CanvasGroup group;
 
     Hero hero;
@@ -20,8 +22,19 @@ public class HeroStatusCard : MonoBehaviour
 
     static readonly Color HpHigh = new Color(0.35f, 0.85f, 0.45f);
     static readonly Color HpLow = new Color(0.9f, 0.35f, 0.3f);
-    static readonly Color SkillReady = new Color(0.85f, 0.68f, 0.25f, 0.95f);
-    static readonly Color SkillCharging = new Color(0.35f, 0.42f, 0.60f, 0.9f);
+    static readonly Color IconReady = new Color(0.90f, 0.72f, 0.30f);   // 준비 = 금색
+    static readonly Color IconCharging = new Color(0.40f, 0.46f, 0.62f); // 충전 중 = 회청
+    static readonly Color BgNormal = new Color(0f, 0f, 0f, 0.30f);
+    static readonly Color BgHighlight = new Color(0.35f, 0.85f, 0.5f, 0.45f); // 포션 범위 강조
+
+    public Hero BoundHero => hero;
+
+    /// <summary>포션 범위 등 외부 강조 (전장 링과 동기 — HeroStatusBar가 호출)</summary>
+    public void SetHighlighted(bool on)
+    {
+        if (background != null)
+            background.color = on ? BgHighlight : BgNormal;
+    }
 
     public void Bind(Hero target)
     {
@@ -39,7 +52,10 @@ public class HeroStatusCard : MonoBehaviour
             if (sr != null) colorDot.color = sr.color;
         }
         if (skillText != null)
-            skillText.text = runner != null && runner.Skill != null ? runner.Skill.displayName : "-";
+        {
+            string skillName = runner != null && runner.Skill != null ? runner.Skill.displayName : "";
+            skillText.text = string.IsNullOrEmpty(skillName) ? "-" : skillName.Substring(0, 1); // 모노그램
+        }
         Refresh();
     }
 
@@ -58,11 +74,13 @@ public class HeroStatusCard : MonoBehaviour
             hpFill.color = Color.Lerp(HpLow, HpHigh, ratio);
         }
 
-        if (skillFill != null && runner != null)
+        if (runner != null)
         {
             float cd = runner.CooldownRatio; // 0=방금 씀, 1=준비 완료
-            skillFill.fillAmount = cd;
-            skillFill.color = cd >= 1f ? SkillReady : SkillCharging;
+            if (skillFill != null)
+                skillFill.fillAmount = 1f - cd; // 남은 쿨만큼 어둡게 덮음 (시계 방향 감소)
+            if (skillIcon != null)
+                skillIcon.color = cd >= 1f ? IconReady : IconCharging;
         }
     }
 }
