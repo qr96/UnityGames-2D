@@ -159,18 +159,25 @@ public class ConsumableBar : MonoBehaviour
         return false;
     }
 
-    bool IsFilled(int slotIndex)
-    {
-        int shown = Mathf.Min(potionCount, slots.Count);
-        return slotIndex >= slots.Count - shown;
-    }
+    // 고정 슬롯 방식 (HUD 개편): 슬롯 위치는 불변, 개수 뱃지(xN)만 감소.
+    // 현재 아이템 1종(회복 포션) = 슬롯 0. 이후 아이템이 늘면 슬롯별 배정.
+    const int PotionSlot = 0;
 
-    /// <summary>오른쪽부터 채워서 표시</summary>
+    bool IsFilled(int slotIndex) => slotIndex == PotionSlot && potionCount > 0;
+
     void Render()
     {
-        int shown = Mathf.Min(potionCount, slots.Count);
         for (int i = 0; i < slots.Count; i++)
-            slots[i].SetFilled(i >= slots.Count - shown, "포션");
+        {
+            bool isPotion = i == PotionSlot;
+            slots[i].SetFilled(isPotion && potionCount > 0, isPotion ? "회복" : "");
+
+            // 개수 뱃지 (빌더가 슬롯마다 "CountBadge" Text 생성)
+            var badge = slots[i].transform.Find("CountBadge");
+            var badgeText = badge != null ? badge.GetComponent<UnityEngine.UI.Text>() : null;
+            if (badgeText != null)
+                badgeText.text = isPotion ? $"x{potionCount}" : "";
+        }
     }
 
     Vector3 ScreenToWorld(Vector2 screenPos)

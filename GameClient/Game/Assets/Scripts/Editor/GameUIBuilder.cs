@@ -177,6 +177,83 @@ public static class GameUIBuilder
         WireButton(startBtn, hud, nameof(GameHUD.OnClickStartBattle));
         hud.startButton = startBtn.gameObject;
 
+        // ================= 상단 영웅 상태 바 (배치/전투 — HeroStatusBar가 표시 제어) =================
+
+        var statusGO = new GameObject("HeroStatusBar", typeof(RectTransform));
+        statusGO.transform.SetParent(root, false);
+        var statusRT = statusGO.GetComponent<RectTransform>();
+        SetAnchored(statusRT, new Vector2(0.5f, 1f), new Vector2(0f, -212f), new Vector2(1060f, 150f));
+        var statusBar = statusGO.AddComponent<HeroStatusBar>();
+
+        const float cardW = 204f, cardGap = 10f;
+        float cardsW = 5 * cardW + 4 * cardGap;
+        for (int i = 0; i < 5; i++)
+        {
+            var cardGO = MakeImage(statusGO.transform, $"HeroCard{i}", new Color(0.08f, 0.10f, 0.15f, 0.92f), rounded: true);
+            var cdrt = cardGO.GetComponent<RectTransform>();
+            SetAnchored(cdrt, new Vector2(0.5f, 0.5f),
+                new Vector2(-cardsW / 2f + cardW / 2f + i * (cardW + cardGap), 0f),
+                new Vector2(cardW, 150f));
+            var card = cardGO.AddComponent<HeroStatusCard>();
+            card.group = cardGO.AddComponent<CanvasGroup>();
+            card.group.blocksRaycasts = false; // 전장 클릭/드래그 방해 금지
+
+            // 색점 + 이름 (윗줄)
+            var dotGO = MakeImage(cardGO.transform, "Dot", Color.white, rounded: true);
+            var dotRT = dotGO.GetComponent<RectTransform>();
+            SetAnchored(dotRT, new Vector2(0f, 1f), new Vector2(24f, -26f), new Vector2(24f, 24f));
+            card.colorDot = dotGO.GetComponent<Image>();
+
+            Text nameT = MakeText(cardGO.transform, "Name", "영웅", 24);
+            nameT.alignment = TextAnchor.MiddleLeft;
+            SetAnchored(nameT.rectTransform, new Vector2(0f, 1f), new Vector2(118f, -26f), new Vector2(150f, 30f));
+            card.nameText = nameT;
+
+            // HP 바 + 수치 (가운데)
+            var hpBgGO = MakeImage(cardGO.transform, "HpBg", new Color(0f, 0f, 0f, 0.5f), rounded: true);
+            SetAnchored(hpBgGO.GetComponent<RectTransform>(), new Vector2(0.5f, 1f), new Vector2(0f, -62f), new Vector2(176f, 18f));
+            var hpFillGO = MakeImage(hpBgGO.transform, "HpFill", new Color(0.35f, 0.85f, 0.45f), rounded: true);
+            var hfrt = hpFillGO.GetComponent<RectTransform>();
+            hfrt.anchorMin = Vector2.zero;
+            hfrt.anchorMax = Vector2.one;
+            hfrt.offsetMin = new Vector2(2f, 2f);
+            hfrt.offsetMax = new Vector2(-2f, -2f);
+            var hpFillImg = hpFillGO.GetComponent<Image>();
+            hpFillImg.type = Image.Type.Filled;
+            hpFillImg.fillMethod = Image.FillMethod.Horizontal;
+            card.hpFill = hpFillImg;
+
+            Text hpT = MakeText(cardGO.transform, "HpText", "0 / 0", 22);
+            SetAnchored(hpT.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -86f), new Vector2(180f, 26f));
+            card.hpText = hpT;
+
+            // 스킬 쿨 (아랫줄): 카드 전폭 게이지 + 그 위에 스킬 이름 (가독 개선)
+            var skBgGO = MakeImage(cardGO.transform, "SkillBg", new Color(0f, 0f, 0f, 0.55f), rounded: true);
+            SetAnchored(skBgGO.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0f, 22f), new Vector2(176f, 30f));
+            var skFillGO = MakeImage(skBgGO.transform, "SkillFill", new Color(0.95f, 0.8f, 0.4f), rounded: true);
+            var sfrt = skFillGO.GetComponent<RectTransform>();
+            sfrt.anchorMin = Vector2.zero;
+            sfrt.anchorMax = Vector2.one;
+            sfrt.offsetMin = new Vector2(2f, 2f);
+            sfrt.offsetMax = new Vector2(-2f, -2f);
+            var skFillImg = skFillGO.GetComponent<Image>();
+            skFillImg.type = Image.Type.Filled;
+            skFillImg.fillMethod = Image.FillMethod.Horizontal;
+            card.skillFill = skFillImg;
+
+            Text skT = MakeText(skBgGO.transform, "SkillName", "-", 20);
+            skT.color = Color.white;
+            var skrt = skT.rectTransform;
+            skrt.anchorMin = Vector2.zero;
+            skrt.anchorMax = Vector2.one;
+            skrt.offsetMin = skrt.offsetMax = Vector2.zero;
+            skT.raycastTarget = false;
+            card.skillText = skT;
+
+            statusBar.cards[i] = card;
+            cardGO.SetActive(false); // HeroStatusBar가 페이즈에 따라 켬
+        }
+
         // ================= 전투 중 화면 =================
 
         var barGO = new GameObject("ConsumableBar", typeof(RectTransform));
@@ -196,6 +273,17 @@ public static class GameUIBuilder
             SetAnchored(srt, new Vector2(0.5f, 0.5f),
                 new Vector2(-totalW / 2f + slotSize / 2f + i * (slotSize + gap), 0f),
                 new Vector2(slotSize, slotSize));
+
+            // 개수 뱃지 (고정 슬롯 방식 — 소모 시 xN 감소, ConsumableBar가 갱신)
+            Text badge = MakeText(slot.transform, "CountBadge", "", 24);
+            badge.alignment = TextAnchor.LowerRight;
+            badge.fontStyle = FontStyle.Bold;
+            var bdrt = badge.rectTransform;
+            bdrt.anchorMin = Vector2.zero;
+            bdrt.anchorMax = Vector2.one;
+            bdrt.offsetMin = new Vector2(6f, 6f);
+            bdrt.offsetMax = new Vector2(-10f, -6f);
+            badge.raycastTarget = false;
         }
 
         // ================= 팝업 (비활성으로 생성) =================
@@ -271,6 +359,7 @@ public static class GameUIBuilder
         if (canvas.transform.Find("ExploreDirectionPanel") == null) { BuildExploreUI(); applied.Add("탐험 UI"); }
         if (canvas.transform.Find("CampPanel") == null) { BuildCampUI(); applied.Add("야영지 패널"); }
         if (canvas.transform.Find("StairsPanel") == null) { BuildStairsUI(); applied.Add("계단 패널"); }
+        // 상태 바는 메인 빌드 소속 — 없으면 안내만 (개별 재생성 없음: Canvas 재생성 권장)
 
         if (applied.Count > 0)
         {

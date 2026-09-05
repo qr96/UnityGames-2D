@@ -27,6 +27,10 @@ public class SkillRunner : MonoBehaviour
     public bool IsReady => timer <= 0f;
     public SkillDefinition Skill => skill;
 
+    /// <summary>쿨다운 진행 (0 = 방금 사용, 1 = 준비 완료) — 상단 상태 바 표시용</summary>
+    public float CooldownRatio => skill == null || skill.cooldown <= 0f
+        ? 1f : 1f - Mathf.Clamp01(timer / skill.cooldown);
+
     public void Init(Hero hero, SkillDefinition skill)
     {
         this.hero = hero;
