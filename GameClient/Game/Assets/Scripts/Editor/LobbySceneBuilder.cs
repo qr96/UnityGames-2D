@@ -145,6 +145,13 @@ public static class LobbySceneBuilder
         Wire(sortie, hud, nameof(LobbyHUD.OnClickSortie));
 
         // 영입 (하단 중앙 위 — 영입 스펙 v1)
+        Button armoryBtn2 = MakeButton(root, "ArmoryButton", "보관소", new Color(0.32f, 0.42f, 0.38f), 30);
+        var abrt2 = armoryBtn2.GetComponent<RectTransform>();
+        abrt2.anchorMin = abrt2.anchorMax = new Vector2(0.5f, 0f);
+        abrt2.anchoredPosition = new Vector2(-390f, 90f); // 하단 바 1번째
+        abrt2.sizeDelta = new Vector2(250f, 110f);
+        Wire(armoryBtn2, hud, nameof(LobbyHUD.OnClickArmory));
+
         Button recruitBtn = MakeButton(root, "RecruitButton", "영입", new Color(0.55f, 0.40f, 0.20f), 30);
         var rbrt = recruitBtn.GetComponent<RectTransform>();
         rbrt.anchorMin = rbrt.anchorMax = new Vector2(0.5f, 0f);
@@ -161,8 +168,8 @@ public static class LobbySceneBuilder
         // ---- 영입 패널 ----
         BuildRecruitUIInternal(canvas, hud);
 
-        // ---- 보관소 / 출발 지점 / 목록 스크롤 (풀빌드에 포함 — 개별 메뉴는 재생성용) ----
-        BuildArmoryUI();
+        // ---- 출발 지점 / 목록 스크롤 (풀빌드에 포함 — 개별 메뉴는 재생성용) ----
+        // 보관소 열람 패널은 폐기 — [보관소] 버튼이 영웅 관리 [장비] 탭을 연다 (장비 관리 개편 ①)
         BuildStartFloorUI();
         ApplyListScrollsSilent(); // 풀빌드 중에는 다이얼로그 없이
 
@@ -191,7 +198,16 @@ public static class LobbySceneBuilder
         if (canvas.transform.Find("HeroManagePanel") == null) { BuildHeroManageUI(); applied.Add("영웅 관리 패널"); }
         if (canvas.transform.Find("SortiePanel") == null) { BuildSortieUI(); applied.Add("출정 패널"); }
         if (canvas.transform.Find("RecruitPanel") == null) { BuildRecruitUI(); applied.Add("영입 패널"); }
-        if (canvas.transform.Find("ArmoryPanel") == null) { BuildArmoryUI(); applied.Add("보관소 패널"); }
+        if (canvas.transform.Find("ArmoryButton") == null)
+        {
+            Button armoryBtn = MakeButton(canvas.transform, "ArmoryButton", "보관소", new Color(0.32f, 0.42f, 0.38f), S(30f));
+            var abrt = armoryBtn.GetComponent<RectTransform>();
+            abrt.anchorMin = abrt.anchorMax = new Vector2(0.5f, 0f);
+            abrt.anchoredPosition = new Vector2(-S(390f), S(90f));
+            abrt.sizeDelta = new Vector2(S(250f), S(110f));
+            Wire(armoryBtn, hud, nameof(LobbyHUD.OnClickArmory));
+            applied.Add("보관소 버튼");
+        }
 
         // 요소 단위 — 패널은 있는데 뒤에 추가된 조각이 빠진 경우
         var manage = Object.FindFirstObjectByType<HeroManagePanel>(FindObjectsInactive.Include);
@@ -351,141 +367,6 @@ public static class LobbySceneBuilder
         EditorUtility.SetDirty(hud);
         EditorSceneManager.MarkSceneDirty(canvas.gameObject.scene);
         Debug.Log("[LobbySceneBuilder] 출정 UI 생성 완료.");
-    }
-
-    [MenuItem("Tools/GrabProto/재생성/로비/보관소 패널", false, 104)]
-    public static void BuildArmoryUI()
-    {
-        font = LoadFont();
-
-        Canvas canvas = Object.FindFirstObjectByType<Canvas>();
-        LobbyHUD hud = canvas != null ? canvas.GetComponent<LobbyHUD>() : null;
-        if (canvas == null || hud == null)
-        {
-            EditorUtility.DisplayDialog("보관소 UI", "Canvas/LobbyHUD가 없습니다. 먼저 [로비 씬 구성]을 실행하세요.", "확인");
-            return;
-        }
-        if (canvas.transform.Find("ArmoryPanel") != null)
-        {
-            EditorUtility.DisplayDialog("보관소 UI", "이미 ArmoryPanel이 있습니다.", "확인");
-            return;
-        }
-
-        UpdateUiScale(canvas);
-
-        // HUD 보관소 버튼 — 영입 버튼 왼쪽
-        if (canvas.transform.Find("ArmoryButton") == null)
-        {
-            Button armoryBtn = MakeButton(canvas.transform, "ArmoryButton", "보관소", new Color(0.32f, 0.42f, 0.38f), S(30f));
-            var abrt = armoryBtn.GetComponent<RectTransform>();
-            abrt.anchorMin = abrt.anchorMax = new Vector2(0.5f, 0f);
-            abrt.anchoredPosition = new Vector2(-S(390f), S(90f)); // 하단 바 1번째
-            abrt.sizeDelta = new Vector2(S(250f), S(110f));
-            Wire(armoryBtn, hud, nameof(LobbyHUD.OnClickArmory));
-        }
-
-        // ---- 패널 본체 ----
-        var panelGO = new GameObject("ArmoryPanel", typeof(Image));
-        panelGO.transform.SetParent(canvas.transform, false);
-        var panelImg = panelGO.GetComponent<Image>();
-        panelImg.color = new Color(0.06f, 0.07f, 0.10f, 0.97f);
-        panelImg.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
-        panelImg.type = Image.Type.Sliced;
-        var prt = panelGO.GetComponent<RectTransform>();
-        prt.anchorMin = prt.anchorMax = new Vector2(0.5f, 0.5f);
-        prt.sizeDelta = new Vector2(S(960f), S(1240f)); // 3:4 화면(1440) 내
-
-        var panel = panelGO.AddComponent<ArmoryPanel>();
-
-        Text title = MakeText(panelGO.transform, "보관소  (0)", S(42f));
-        var trt = title.rectTransform;
-        trt.anchorMin = trt.anchorMax = new Vector2(0.5f, 1f);
-        trt.anchoredPosition = new Vector2(0f, -S(70f));
-        trt.sizeDelta = new Vector2(S(700f), S(80f));
-        panel.titleText = title;
-
-        Button close = MakeButton(panelGO.transform, "CloseButton", "✕", new Color(0.55f, 0.22f, 0.25f), S(34f));
-        var crt = close.GetComponent<RectTransform>();
-        crt.anchorMin = crt.anchorMax = new Vector2(1f, 1f);
-        crt.pivot = new Vector2(1f, 1f);
-        crt.anchoredPosition = new Vector2(-S(16f), -S(16f));
-        crt.sizeDelta = new Vector2(S(76f), S(76f));
-        Wire(close, panel, nameof(ArmoryPanel.Close));
-
-        // ---- 스크롤 뷰 (보관소는 무한히 쌓임) ----
-        var scrollGO = new GameObject("Scroll", typeof(RectTransform), typeof(ScrollRect), typeof(Image));
-        scrollGO.transform.SetParent(panelGO.transform, false);
-        var srt = scrollGO.GetComponent<RectTransform>();
-        srt.anchorMin = new Vector2(0.5f, 0f);
-        srt.anchorMax = new Vector2(0.5f, 1f);
-        srt.pivot = new Vector2(0.5f, 0.5f);
-        srt.anchoredPosition = new Vector2(0f, -S(35f));
-        srt.sizeDelta = new Vector2(S(860f), -S(230f)); // 상단 제목/하단 여백 제외
-        scrollGO.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.25f);
-
-        var viewportGO = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(Mask));
-        viewportGO.transform.SetParent(scrollGO.transform, false);
-        var vrt = viewportGO.GetComponent<RectTransform>();
-        vrt.anchorMin = Vector2.zero;
-        vrt.anchorMax = Vector2.one;
-        vrt.offsetMin = Vector2.zero;
-        vrt.offsetMax = Vector2.zero;
-        viewportGO.GetComponent<Image>().color = Color.white;
-        viewportGO.GetComponent<Mask>().showMaskGraphic = false;
-
-        var contentGO = new GameObject("Content", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
-        contentGO.transform.SetParent(viewportGO.transform, false);
-        var cort = contentGO.GetComponent<RectTransform>();
-        cort.anchorMin = new Vector2(0.5f, 1f);
-        cort.anchorMax = new Vector2(0.5f, 1f);
-        cort.pivot = new Vector2(0.5f, 1f);
-        cort.sizeDelta = new Vector2(S(840f), 0f);
-        var layout = contentGO.GetComponent<VerticalLayoutGroup>();
-        layout.spacing = S(10f);
-        layout.padding = new RectOffset(0, 0, Mathf.RoundToInt(S(10f)), Mathf.RoundToInt(S(10f)));
-        layout.childAlignment = TextAnchor.UpperCenter;
-        layout.childControlWidth = false;
-        layout.childControlHeight = false;
-        layout.childForceExpandWidth = false;
-        layout.childForceExpandHeight = false;
-        contentGO.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-        var scroll = scrollGO.GetComponent<ScrollRect>();
-        scroll.viewport = vrt;
-        scroll.content = cort;
-        scroll.horizontal = false;
-        scroll.vertical = true;
-        scroll.movementType = ScrollRect.MovementType.Clamped;
-        scroll.scrollSensitivity = S(30f);
-
-        // ---- 항목 템플릿 (읽기 전용 — Image + Text) ----
-        var entryGO = new GameObject("EntryTemplate", typeof(RectTransform), typeof(Image));
-        entryGO.transform.SetParent(contentGO.transform, false);
-        var ert = entryGO.GetComponent<RectTransform>();
-        ert.sizeDelta = new Vector2(S(820f), S(96f)); // 폰트 상향분
-        var eimg = entryGO.GetComponent<Image>();
-        eimg.color = new Color(0.14f, 0.17f, 0.25f, 0.9f);
-        eimg.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
-        eimg.type = Image.Type.Sliced;
-
-        Text entryText = MakeText(entryGO.transform, "장비 이름", S(30f));
-        entryText.alignment = TextAnchor.MiddleLeft;
-        var etrt = entryText.rectTransform;
-        etrt.anchorMin = Vector2.zero;
-        etrt.anchorMax = Vector2.one;
-        etrt.offsetMin = new Vector2(S(24f), 0f);
-        etrt.offsetMax = new Vector2(-S(24f), 0f);
-        entryGO.SetActive(false);
-
-        panel.listRoot = contentGO.transform;
-        panel.entryTemplate = entryGO;
-        hud.armoryPanel = panel;
-        panelGO.SetActive(false);
-
-        EditorUtility.SetDirty(panel);
-        EditorUtility.SetDirty(hud);
-        EditorSceneManager.MarkSceneDirty(canvas.gameObject.scene);
-        Debug.Log("[LobbySceneBuilder] 보관소 UI 생성 완료.");
     }
 
     [MenuItem("Tools/GrabProto/재생성/로비/출발 지점 버튼", false, 105)]
@@ -811,7 +692,7 @@ public static class LobbySceneBuilder
     /// <summary>영웅 관리 패널 (목록 위 / 상세 아래) 생성 및 연결</summary>
     static void BuildHeroManageUIInternal(Canvas canvas, LobbyHUD hud)
     {
-        // 패널 본체
+        // ---- 패널 본체 (장비 관리 개편 ①: 목록 + 헤더 + 탭 2개) ----
         var panelGO = new GameObject("HeroManagePanel", typeof(Image));
         panelGO.transform.SetParent(canvas.transform, false);
         var panelImg = panelGO.GetComponent<Image>();
@@ -820,19 +701,16 @@ public static class LobbySceneBuilder
         panelImg.type = Image.Type.Sliced;
         var prt = panelGO.GetComponent<RectTransform>();
         prt.anchorMin = prt.anchorMax = new Vector2(0.5f, 0.5f);
-        prt.sizeDelta = new Vector2(960f, 1240f); // 3:4 화면(1440) 내
+        prt.sizeDelta = new Vector2(960f, 1240f);
 
         var panel = panelGO.AddComponent<HeroManagePanel>();
-        panel.lobby = Object.FindFirstObjectByType<LobbyController>();
 
-        // 제목
-        Text title = MakeText(panelGO.transform, "영웅 관리", 44);
+        Text title = MakeText(panelGO.transform, "영웅 관리", 42);
         var trt = title.rectTransform;
         trt.anchorMin = trt.anchorMax = new Vector2(0.5f, 1f);
-        trt.anchoredPosition = new Vector2(0f, -70f);
-        trt.sizeDelta = new Vector2(600f, 80f);
+        trt.anchoredPosition = new Vector2(0f, -60f);
+        trt.sizeDelta = new Vector2(700f, 70f);
 
-        // 닫기
         Button close = MakeButton(panelGO.transform, "CloseButton", "✕", new Color(0.55f, 0.22f, 0.25f), 34);
         var crt = close.GetComponent<RectTransform>();
         crt.anchorMin = crt.anchorMax = new Vector2(1f, 1f);
@@ -841,116 +719,284 @@ public static class LobbySceneBuilder
         crt.sizeDelta = new Vector2(76f, 76f);
         Wire(close, panel, nameof(HeroManagePanel.Close));
 
-        // 목록 (위쪽) — 항목 템플릿 복제 방식
-        var listGO = new GameObject("ListRoot", typeof(RectTransform), typeof(VerticalLayoutGroup));
+        // ---- 보유 영웅 목록 (스크롤은 패치/풀빌드의 RetrofitScroll 담당) ----
+        var listGO = new GameObject("List", typeof(RectTransform), typeof(VerticalLayoutGroup));
         listGO.transform.SetParent(panelGO.transform, false);
         var lrt = listGO.GetComponent<RectTransform>();
         lrt.anchorMin = lrt.anchorMax = new Vector2(0.5f, 1f);
         lrt.pivot = new Vector2(0.5f, 1f);
-        lrt.anchoredPosition = new Vector2(0f, -150f);
-        lrt.sizeDelta = new Vector2(840f, 400f); // 상세 폰트 상향분 양보 (스크롤로 8명 대응)
+        lrt.anchoredPosition = new Vector2(0f, -120f);
+        lrt.sizeDelta = new Vector2(840f, 300f);
         var layout = listGO.GetComponent<VerticalLayoutGroup>();
-        layout.spacing = 14f;
+        layout.spacing = 12f;
         layout.childAlignment = TextAnchor.UpperCenter;
         layout.childControlWidth = false;
         layout.childControlHeight = false;
         layout.childForceExpandWidth = false;
         layout.childForceExpandHeight = false;
 
-        Button entry = MakeButton(listGO.transform, "EntryTemplate", "영웅 이름", new Color(0.16f, 0.20f, 0.30f), 32);
-        entry.GetComponent<RectTransform>().sizeDelta = new Vector2(820f, 110f);
+        Button entry = MakeButton(listGO.transform, "EntryTemplate", "영웅", new Color(0.16f, 0.20f, 0.30f), 30);
+        entry.GetComponent<RectTransform>().sizeDelta = new Vector2(820f, 84f);
         entry.gameObject.SetActive(false);
 
-        // 상세 (아래쪽) — 영입 카드와 동일 문법: 라벨 회색 소자 / 값 크게 / 이름 강조
-        var detailGO = new GameObject("DetailRoot", typeof(RectTransform), typeof(Image));
-        detailGO.transform.SetParent(panelGO.transform, false);
-        var dimg = detailGO.GetComponent<Image>();
-        dimg.color = new Color(0.11f, 0.13f, 0.19f, 0.95f);
-        dimg.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
-        dimg.type = Image.Type.Sliced;
-        var drt = detailGO.GetComponent<RectTransform>();
-        drt.anchorMin = drt.anchorMax = new Vector2(0.5f, 0f);
-        drt.pivot = new Vector2(0.5f, 0f);
-        drt.anchoredPosition = new Vector2(0f, 140f); // 해고 버튼 위 공간 확보
-        drt.sizeDelta = new Vector2(840f, 520f); // 폰트 상향분 반영
+        // ---- 공통 헤더 ----
+        Text header = MakeText(panelGO.transform, "영웅을 선택하세요", 32);
+        header.fontStyle = FontStyle.Bold;
+        header.alignment = TextAnchor.MiddleLeft;
+        var hrt = header.rectTransform;
+        hrt.anchorMin = hrt.anchorMax = new Vector2(0.5f, 1f);
+        hrt.anchoredPosition = new Vector2(0f, -466f);
+        hrt.sizeDelta = new Vector2(840f, 52f);
+        panel.headerText = header;
 
-        var dv = panel.detail;
+        // ---- 탭 바 ----
+        Button infoTab = MakeButton(panelGO.transform, "InfoTab", "정보", new Color(0.30f, 0.45f, 0.85f), 28);
+        var itrt = infoTab.GetComponent<RectTransform>();
+        itrt.anchorMin = itrt.anchorMax = new Vector2(0.5f, 1f);
+        itrt.anchoredPosition = new Vector2(-320f, -528f);
+        itrt.sizeDelta = new Vector2(200f, 56f);
+        Wire(infoTab, panel, nameof(HeroManagePanel.OnClickInfoTab));
+        panel.infoTabButton = infoTab;
+
+        Button equipTab = MakeButton(panelGO.transform, "EquipTab", "장비", new Color(0.14f, 0.16f, 0.24f), 28);
+        var etrt = equipTab.GetComponent<RectTransform>();
+        etrt.anchorMin = etrt.anchorMax = new Vector2(0.5f, 1f);
+        etrt.anchoredPosition = new Vector2(-108f, -528f);
+        etrt.sizeDelta = new Vector2(200f, 56f);
+        Wire(equipTab, panel, nameof(HeroManagePanel.OnClickEquipTab));
+        panel.equipTabButton = equipTab;
+
+        // ---- 탭 내용 박스 (공유 배경) ----
+        var boxGO = new GameObject("TabBox", typeof(Image));
+        boxGO.transform.SetParent(panelGO.transform, false);
+        var boxImg = boxGO.GetComponent<Image>();
+        boxImg.color = new Color(0.11f, 0.13f, 0.19f, 0.95f);
+        boxImg.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+        boxImg.type = Image.Type.Sliced;
+        var brt = boxGO.GetComponent<RectTransform>();
+        brt.anchorMin = brt.anchorMax = new Vector2(0.5f, 1f);
+        brt.pivot = new Vector2(0.5f, 1f);
+        brt.anchoredPosition = new Vector2(0f, -556f);
+        brt.sizeDelta = new Vector2(880f, 520f);
+
         Color subColor = new Color(0.56f, 0.61f, 0.70f);
         string[] statLabels = { "HP", "공격", "치확", "치피" };
         float[] statX = { 28f, 224f, 420f, 560f };
 
-        Text dName = MakeText(detailGO.transform, "영웅을 선택하세요", 34);
-        dName.fontStyle = FontStyle.Bold;
-        dName.alignment = TextAnchor.UpperLeft;
-        PlaceTopLeft(dName.rectTransform, 28f, 14f, 680f, 46f);
-        dv.nameText = dName;
+        // ================= [정보] 탭 =================
+        var infoGO = new GameObject("InfoRoot", typeof(RectTransform));
+        infoGO.transform.SetParent(boxGO.transform, false);
+        var irt2 = infoGO.GetComponent<RectTransform>();
+        irt2.anchorMin = Vector2.zero;
+        irt2.anchorMax = Vector2.one;
+        irt2.offsetMin = irt2.offsetMax = Vector2.zero;
+        panel.infoRoot = infoGO;
 
+        var iv = panel.info;
         for (int s = 0; s < 4; s++)
         {
-            Text label = MakeText(detailGO.transform, statLabels[s], 24);
+            Text label = MakeText(infoGO.transform, statLabels[s], 24);
             label.color = subColor;
             label.alignment = TextAnchor.UpperLeft;
-            PlaceTopLeft(label.rectTransform, statX[s], 68f, 160f, 32f);
+            PlaceTopLeft(label.rectTransform, statX[s], 28f, 160f, 32f);
 
-            Text value = MakeText(detailGO.transform, "-", 36);
+            Text value = MakeText(infoGO.transform, "-", 36);
             value.alignment = TextAnchor.UpperLeft;
-            PlaceTopLeft(value.rectTransform, statX[s], 98f, 180f, 48f);
-            dv.statValues[s] = value;
+            PlaceTopLeft(value.rectTransform, statX[s], 58f, 180f, 48f);
+            iv.statValues[s] = value;
 
-            Text sub = MakeText(detailGO.transform, "", 22);
+            Text sub = MakeText(infoGO.transform, "", 22);
             sub.color = subColor;
             sub.alignment = TextAnchor.UpperLeft;
-            PlaceTopLeft(sub.rectTransform, statX[s], 146f, 180f, 30f);
-            dv.statSubs[s] = sub;
+            PlaceTopLeft(sub.rectTransform, statX[s], 106f, 180f, 30f);
+            iv.statSubs[s] = sub;
         }
 
-        MakeDetailLabel(detailGO.transform, subColor, "액티브", 192f);
-        Text dActive = MakeText(detailGO.transform, "-", 27);
+        MakeDetailLabel(infoGO.transform, subColor, "액티브", 168f);
+        Text dActive = MakeText(infoGO.transform, "-", 27);
         dActive.alignment = TextAnchor.UpperLeft;
-        PlaceTopLeft(dActive.rectTransform, 148f, 189f, 660f, 38f);
-        dv.activeText = dActive;
+        PlaceTopLeft(dActive.rectTransform, 148f, 165f, 700f, 38f);
+        iv.activeText = dActive;
 
-        MakeDetailLabel(detailGO.transform, subColor, "특성", 234f);
-        Text dTrait = MakeText(detailGO.transform, "-", 27);
+        MakeDetailLabel(infoGO.transform, subColor, "특성", 214f);
+        Text dTrait = MakeText(infoGO.transform, "-", 27);
         dTrait.alignment = TextAnchor.UpperLeft;
-        PlaceTopLeft(dTrait.rectTransform, 148f, 231f, 660f, 82f); // 긴 설명 2줄 허용
-        dv.traitText = dTrait;
+        PlaceTopLeft(dTrait.rectTransform, 148f, 211f, 700f, 82f);
+        iv.traitText = dTrait;
 
-        MakeDetailLabel(detailGO.transform, subColor, "무기", 320f);
-        Text dWeapon = MakeText(detailGO.transform, "-", 27);
-        dWeapon.alignment = TextAnchor.UpperLeft;
-        PlaceTopLeft(dWeapon.rectTransform, 148f, 317f, 660f, 36f);
-        dv.weaponText = dWeapon;
+        MakeDetailLabel(infoGO.transform, subColor, "장착", 300f);
+        Text dSummary = MakeText(infoGO.transform, "-", 27);
+        dSummary.alignment = TextAnchor.UpperLeft;
+        PlaceTopLeft(dSummary.rectTransform, 148f, 297f, 700f, 38f);
+        iv.equipSummaryText = dSummary;
 
-        MakeDetailLabel(detailGO.transform, subColor, "장비", 360f);
-        Text dEquip = MakeText(detailGO.transform, "-", 27);
-        dEquip.alignment = TextAnchor.UpperLeft;
-        PlaceTopLeft(dEquip.rectTransform, 148f, 357f, 660f, 150f); // 최대 3줄
-        dv.equipText = dEquip;
+        // ================= [장비] 탭 =================
+        var equipGO = new GameObject("EquipRoot", typeof(RectTransform));
+        equipGO.transform.SetParent(boxGO.transform, false);
+        var ert2 = equipGO.GetComponent<RectTransform>();
+        ert2.anchorMin = Vector2.zero;
+        ert2.anchorMax = Vector2.one;
+        ert2.offsetMin = ert2.offsetMax = Vector2.zero;
+        equipGO.SetActive(false);
+        panel.equipRoot = equipGO;
 
-        // 해고 버튼 (영입 스펙 v1 — 환급 없음)
-        Button dismiss = MakeButton(panelGO.transform, "DismissButton",
-            "해고 (환급 없음)", new Color(0.55f, 0.22f, 0.25f), 28);
-        var dbrt = dismiss.GetComponent<RectTransform>();
-        dbrt.anchorMin = dbrt.anchorMax = new Vector2(1f, 0f);
-        dbrt.pivot = new Vector2(1f, 0f);
-        dbrt.anchoredPosition = new Vector2(-30f, 30f);
-        dbrt.sizeDelta = new Vector2(320f, 90f);
+        // 장착 슬롯 줄 (무기 1 + 자유 3 — 축약명 표시, 탭=상세, 드래그=해제)
+        for (int i = 0; i < 4; i++)
+        {
+            bool isWeapon = i == 0;
+            var slotGO = new GameObject(isWeapon ? "WeaponSlot" : $"GearSlot{i - 1}", typeof(Image));
+            slotGO.transform.SetParent(equipGO.transform, false);
+            var slotImg = slotGO.GetComponent<Image>();
+            slotImg.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+            slotImg.type = Image.Type.Sliced;
+            PlaceTopLeft(slotGO.GetComponent<RectTransform>(), 30f + i * 210f, 22f, 190f, 110f);
+
+            var slotUI = slotGO.AddComponent<LobbyEquipSlotUI>();
+            slotUI.isWeaponSlot = isWeapon;
+            slotUI.slotIndex = isWeapon ? 0 : i - 1;
+
+            Text slotLabel = MakeText(slotGO.transform, "", 28);
+            slotLabel.alignment = TextAnchor.MiddleCenter;
+            var slrt = slotLabel.rectTransform;
+            slrt.anchorMin = Vector2.zero;
+            slrt.anchorMax = Vector2.one;
+            slrt.offsetMin = slrt.offsetMax = Vector2.zero;
+            slotUI.label = slotLabel;
+
+            panel.equipSlots[i] = slotUI;
+        }
+
+        // 상세/안내 줄
+        Text detailLine = MakeText(equipGO.transform, "", 24);
+        detailLine.alignment = TextAnchor.MiddleLeft;
+        PlaceTopLeft(detailLine.rectTransform, 30f, 144f, 820f, 40f);
+        panel.detailLine = detailLine;
+
+        // 보관소 제목
+        Text storageTitle = MakeText(equipGO.transform, "보관소  (0)", 26);
+        storageTitle.alignment = TextAnchor.MiddleLeft;
+        storageTitle.color = subColor;
+        PlaceTopLeft(storageTitle.rectTransform, 30f, 192f, 400f, 34f);
+        panel.storageTitle = storageTitle;
+
+        // 보관소 목록 (스크롤 + 스크롤바 — 행 드래그와 분리)
+        var scrollGO = new GameObject("StorageScroll", typeof(RectTransform), typeof(ScrollRect), typeof(Image));
+        scrollGO.transform.SetParent(equipGO.transform, false);
+        PlaceTopLeft(scrollGO.GetComponent<RectTransform>(), 20f, 230f, 840f, 272f);
+        scrollGO.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.25f);
+
+        var viewportGO = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(Mask));
+        viewportGO.transform.SetParent(scrollGO.transform, false);
+        var vrt = viewportGO.GetComponent<RectTransform>();
+        vrt.anchorMin = Vector2.zero;
+        vrt.anchorMax = Vector2.one;
+        vrt.offsetMin = Vector2.zero;
+        vrt.offsetMax = new Vector2(-24f, 0f);
+        viewportGO.GetComponent<Image>().color = Color.white;
+        viewportGO.GetComponent<Mask>().showMaskGraphic = false;
+
+        var contentGO = new GameObject("Content", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+        contentGO.transform.SetParent(viewportGO.transform, false);
+        var cort = contentGO.GetComponent<RectTransform>();
+        cort.anchorMin = new Vector2(0.5f, 1f);
+        cort.anchorMax = new Vector2(0.5f, 1f);
+        cort.pivot = new Vector2(0.5f, 1f);
+        cort.sizeDelta = new Vector2(810f, 0f);
+        var slayout = contentGO.GetComponent<VerticalLayoutGroup>();
+        slayout.spacing = 8f;
+        slayout.padding = new RectOffset(0, 0, 8, 8);
+        slayout.childAlignment = TextAnchor.UpperCenter;
+        slayout.childControlWidth = false;
+        slayout.childControlHeight = false;
+        slayout.childForceExpandWidth = false;
+        slayout.childForceExpandHeight = false;
+        contentGO.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        var sbGO = new GameObject("Scrollbar", typeof(RectTransform), typeof(Image), typeof(Scrollbar));
+        sbGO.transform.SetParent(scrollGO.transform, false);
+        var sbrt = sbGO.GetComponent<RectTransform>();
+        sbrt.anchorMin = new Vector2(1f, 0f);
+        sbrt.anchorMax = new Vector2(1f, 1f);
+        sbrt.pivot = new Vector2(1f, 0.5f);
+        sbrt.anchoredPosition = Vector2.zero;
+        sbrt.sizeDelta = new Vector2(20f, 0f);
+        sbGO.GetComponent<Image>().color = new Color(0.10f, 0.11f, 0.16f, 0.9f);
+        var sb = sbGO.GetComponent<Scrollbar>();
+        sb.direction = Scrollbar.Direction.BottomToTop;
+        var handleGO = new GameObject("Handle", typeof(Image));
+        handleGO.transform.SetParent(sbGO.transform, false);
+        var handleImg = handleGO.GetComponent<Image>();
+        handleImg.color = new Color(0.38f, 0.42f, 0.55f, 0.95f);
+        handleImg.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+        handleImg.type = Image.Type.Sliced;
+        var hdrt = handleGO.GetComponent<RectTransform>();
+        hdrt.anchorMin = Vector2.zero;
+        hdrt.anchorMax = Vector2.one;
+        hdrt.offsetMin = new Vector2(3f, 3f);
+        hdrt.offsetMax = new Vector2(-3f, -3f);
+        sb.handleRect = hdrt;
+        sb.targetGraphic = handleImg;
+
+        var scroll = scrollGO.GetComponent<ScrollRect>();
+        scroll.viewport = vrt;
+        scroll.content = cort;
+        scroll.horizontal = false;
+        scroll.vertical = true;
+        scroll.movementType = ScrollRect.MovementType.Clamped;
+        scroll.verticalScrollbar = sb;
+        scroll.scrollSensitivity = 30f;
+
+        // 보관소 행 템플릿 ([타입 뱃지] 이름 — ★특별 금색 틴트, 드래그=장착)
+        var rowGO = new GameObject("RowTemplate", typeof(Image));
+        rowGO.transform.SetParent(contentGO.transform, false);
+        var rowImg = rowGO.GetComponent<Image>();
+        rowImg.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+        rowImg.type = Image.Type.Sliced;
+        rowGO.GetComponent<RectTransform>().sizeDelta = new Vector2(800f, 70f);
+        var rowUI = rowGO.AddComponent<LobbyStorageRowUI>();
+
+        Text badge = MakeText(rowGO.transform, "무기", 20);
+        badge.color = new Color(0.75f, 0.78f, 0.88f);
+        badge.alignment = TextAnchor.MiddleCenter;
+        var bdrt = badge.rectTransform;
+        bdrt.anchorMin = bdrt.anchorMax = new Vector2(0f, 0.5f);
+        bdrt.pivot = new Vector2(0f, 0.5f);
+        bdrt.anchoredPosition = new Vector2(12f, 0f);
+        bdrt.sizeDelta = new Vector2(64f, 40f);
+        rowUI.badge = badge;
+
+        Text rowLabel = MakeText(rowGO.transform, "", 25);
+        rowLabel.alignment = TextAnchor.MiddleLeft;
+        var rlrt = rowLabel.rectTransform;
+        rlrt.anchorMin = Vector2.zero;
+        rlrt.anchorMax = Vector2.one;
+        rlrt.offsetMin = new Vector2(88f, 0f);
+        rlrt.offsetMax = new Vector2(-12f, 0f);
+        rowUI.label = rowLabel;
+
+        rowGO.SetActive(false);
+        panel.storageListRoot = contentGO.transform;
+        panel.storageRowTemplate = rowGO;
+
+        // ---- 해고 버튼 ----
+        Button dismiss = MakeButton(panelGO.transform, "DismissButton", "해고 (환급 없음)", new Color(0.55f, 0.25f, 0.28f), 26);
+        var drt = dismiss.GetComponent<RectTransform>();
+        drt.anchorMin = drt.anchorMax = new Vector2(1f, 0f);
+        drt.pivot = new Vector2(1f, 0f);
+        drt.anchoredPosition = new Vector2(-30f, 30f);
+        drt.sizeDelta = new Vector2(320f, 90f);
         Wire(dismiss, panel, nameof(HeroManagePanel.OnClickDismiss));
+        dismiss.interactable = false;
+        panel.dismissButton = dismiss;
 
-        // 연결
         panel.listRoot = listGO.transform;
         panel.entryTemplate = entry.gameObject;
-        panel.dismissButton = dismiss;
-        hud.heroManagePanel = panel;
-        RetrofitScroll(lrt); // 목록 스크롤 (16인 로스터 대응)
         panelGO.SetActive(false);
 
+        hud.heroManagePanel = panel;
         EditorUtility.SetDirty(panel);
         EditorUtility.SetDirty(hud);
     }
-
-    // ---------- 생성 헬퍼 ----------
 
     static Button MakeButton(Transform parent, string name, string label, Color color, float fontSize)
     {

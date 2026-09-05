@@ -1,43 +1,65 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
-/// 영웅 관리 패널 (영입 스펙 v1 + 상세 가독성 개편).
-/// 보유 영웅(HeroRoster, 최대 8명) 목록 → 선택 → 상세 + [해고] (환급 없음).
-/// 상세는 영입 카드와 동일 문법: 라벨 회색 소자 / 값 크게 / 특성·장비 이름 강조색.
-/// 레벨은 "Lv.n / 최대" 표기 (최대 레벨 노출은 상세에서만 — 영입 카드는 Lv만).
+/// 영웅 관리 패널 (장비 관리 개편 ①) — 로비 장비 관리의 본진.
+/// 구조: 보유 영웅 목록 → 공통 헤더(이름/요약) → 탭 2개
+///   [정보] 스탯/액티브/특성 + 장착 요약 (영입 카드와 동일 문법)
+///   [장비] 장착 슬롯 줄(무기+자유3, 축약명) + 상세 줄 + 보관소 목록
+/// 조작: 드래그 — 보관소 행 → 슬롯(빈=장착, 점유=그 칸과 교체), 슬롯 → 보관소=해제.
+///   탭(클릭)은 정보 표시 전용 (상세 줄에 전체 이름).
+/// 로비 장착 변경은 즉시 영구 반영 (EquipService — 장비 영속 v1).
 /// UI 구성/연결은 LobbySceneBuilder가 담당.
 /// </summary>
 public class HeroManagePanel : MonoBehaviour
 {
     [System.Serializable]
-    public class DetailView
+    public class InfoView
     {
-        public Text nameText;                    // "브란  Lv.1 / 10" (볼드)
-        public Text[] statValues = new Text[4];  // HP / 공격 / 치확 / 치피 값
-        public Text[] statSubs = new Text[4];    // 보조줄 (최대치 — 치확/치피는 빈칸)
-        public Text activeText;                  // 액티브 이름 + 조건
-        public Text traitText;                   // 특성 이름(금색) + 설명(회색)
-        public Text weaponText;                  // 장착 무기
-        public Text equipText;                   // 장착 장비 목록 (최대 3줄)
+        public Text[] statValues = new Text[4];
+        public Text[] statSubs = new Text[4];
+        public Text activeText;
+        public Text traitText;
+        public Text equipSummaryText; // "검 · 장비 1 / 3" — 상세는 장비 탭
     }
 
     [Tooltip("데이터 소스 (비워두면 자동 탐색)")]
     public LobbyController lobby;
 
-    [Header("UI 연결 (빌더가 자동 연결)")]
+    [Header("공통 (빌더가 자동 연결)")]
     public Transform listRoot;
-    public GameObject entryTemplate; // 비활성 템플릿 (Button + Text)
-    public DetailView detail = new DetailView();
-    public Button dismissButton;     // [해고] — 선택된 영웅 있을 때만 활성
+    public GameObject entryTemplate;
+    public Text headerText;          // "브란  Lv.1 / 10   HP 115 · 공격 9"
+    public Button infoTabButton;
+    public Button equipTabButton;
+    public GameObject infoRoot;
+    public GameObject equipRoot;
+    public Button dismissButton;
 
-    const string SubColor = "#8f9bb3";   // 보조 정보 회색
-    const string TraitColor = "#f2cc66"; // 특성 이름 금색
-    const string WarnColor = "#e08a8a";  // 경고 (무기 미장착)
+    [Header("[정보] 탭")]
+    public InfoView info = new InfoView();
+
+    [Header("[장비] 탭")]
+    public LobbyEquipSlotUI[] equipSlots = new LobbyEquipSlotUI[4]; // [0]=무기
+    public Text detailLine;          // 선택/드래그 결과 안내 (전체 이름)
+    public Text storageTitle;        // "보관소 (n)"
+    public Transform storageListRoot;
+    public GameObject storageRowTemplate;
+
+    const string SubColor = "#8f9bb3";
+    const string TraitColor = "#f2cc66";
+    const string WarnColor = "#e08a8a";
+
+    static readonly Color TabOn = new Color(0.30f, 0.45f, 0.85f, 1f);
+    static readonly Color TabOff = new Color(0.14f, 0.16f, 0.24f, 1f);
 
     readonly List<GameObject> spawnedEntries = new List<GameObject>();
-    OwnedHero selectedHero;
+    readonly List<GameObject> spawnedRows = new List<GameObject>();
+    static readonly List<RaycastResult> raycastResults = new List<RaycastResult>();
+
+    public OwnedHero SelectedHero { get; private set; }
 
     public void Open()
     {
@@ -45,33 +67,49 @@ public class HeroManagePanel : MonoBehaviour
             lobby = Object.FindFirstObjectByType<LobbyController>();
 
         gameObject.SetActive(true);
-        selectedHero = null;
+        SelectedHero = null;
+        OpenTab(0);
         RebuildList();
-        RefreshDetail();
+        RefreshAll();
 
-        // 스크롤이 적용되어 있으면 열 때 맨 위로
         var scroll = listRoot != null ? listRoot.GetComponentInParent<ScrollRect>(true) : null;
         if (scroll != null) scroll.verticalNormalizedPosition = 1f;
     }
 
-    public void Close()
+    /// <summary>[보관소] 버튼 진입점 — 장비 탭을 바로 연다</summary>
+    public void OpenEquipTab()
     {
-        gameObject.SetActive(false);
+        Open();
+        OpenTab(1);
     }
 
-    /// <summary>[해고] 버튼 (빌더가 연결) — 환급 없음 (영입 스펙 v1). 장비는 보관소 회수.</summary>
+    public void Close() => gameObject.SetActive(false);
+
+    // ---------- 탭 ----------
+
+    public void OnClickInfoTab() => OpenTab(0);
+    public void OnClickEquipTab() => OpenTab(1);
+
+    void OpenTab(int index)
+    {
+        if (infoRoot != null) infoRoot.SetActive(index == 0);
+        if (equipRoot != null) equipRoot.SetActive(index == 1);
+        if (infoTabButton != null) infoTabButton.image.color = index == 0 ? TabOn : TabOff;
+        if (equipTabButton != null) equipTabButton.image.color = index == 1 ? TabOn : TabOff;
+    }
+
+    // ---------- 해고 ----------
+
     public void OnClickDismiss()
     {
-        if (selectedHero == null) return;
-        if (!HeroRoster.Dismiss(selectedHero)) return;
-
-        selectedHero = null;
+        if (SelectedHero == null) return;
+        if (!HeroRoster.Dismiss(SelectedHero)) return; // 장비는 보관소 회수
+        SelectedHero = null;
         RebuildList();
-        RefreshDetail();
-        // 참고: 로비를 배회 중인 배우(LobbyHeroActor)는 씬 재진입 시 갱신됨 (연출 전용)
+        RefreshAll();
     }
 
-    // ---------- 내부 ----------
+    // ---------- 목록 ----------
 
     void RebuildList()
     {
@@ -92,7 +130,7 @@ public class HeroManagePanel : MonoBehaviour
             if (label != null) label.text = HeroInfoText.ListLabel(hero);
 
             Button button = entry.GetComponent<Button>();
-            OwnedHero captured = hero; // 클로저 캡처
+            OwnedHero captured = hero;
             if (button != null)
                 button.onClick.AddListener(() => Select(captured));
         }
@@ -100,71 +138,201 @@ public class HeroManagePanel : MonoBehaviour
 
     void Select(OwnedHero hero)
     {
-        selectedHero = hero;
-        RefreshDetail();
+        SelectedHero = hero;
+        RefreshAll();
     }
 
-    void RefreshDetail()
-    {
-        if (dismissButton != null)
-            dismissButton.interactable = selectedHero != null;
+    // ---------- 갱신 ----------
 
-        var hero = selectedHero;
+    void RefreshAll()
+    {
+        var hero = SelectedHero;
+        if (dismissButton != null) dismissButton.interactable = hero != null;
+
+        // 헤더
+        if (headerText != null)
+        {
+            if (hero == null)
+            {
+                headerText.text = $"영웅을 선택하세요   <color={SubColor}><size=24>보유 {HeroRoster.Heroes.Count} / {HeroRoster.MaxRoster}</size></color>";
+            }
+            else
+            {
+                string name = hero.definition != null ? hero.definition.displayName : hero.heroId;
+                headerText.text = $"<b>{name}</b>  Lv.{hero.level} <color={SubColor}><size=22>/ {OwnedHero.MaxLevel}</size></color>" +
+                    $"    <color={SubColor}>HP {hero.MaxHP:0} · 공격 {hero.Attack:0.#}</color>";
+            }
+        }
+
+        RefreshInfoTab(hero);
+        RefreshEquipTab(hero);
+    }
+
+    void RefreshInfoTab(OwnedHero hero)
+    {
         if (hero == null)
         {
-            Set(detail.nameText, $"영웅을 선택하세요   <color={SubColor}><size=22>보유 {HeroRoster.Heroes.Count} / {HeroRoster.MaxRoster}</size></color>");
-            for (int i = 0; i < 4; i++) { Set(detail.statValues[i], "-"); Set(detail.statSubs[i], ""); }
-            Set(detail.activeText, "-");
-            Set(detail.traitText, "-");
-            Set(detail.weaponText, "-");
-            Set(detail.equipText, "-");
+            for (int i = 0; i < 4; i++) { Set(info.statValues[i], "-"); Set(info.statSubs[i], ""); }
+            Set(info.activeText, "-");
+            Set(info.traitText, "-");
+            Set(info.equipSummaryText, "-");
             return;
         }
 
-        string name = hero.definition != null ? hero.definition.displayName : hero.heroId;
-        Set(detail.nameText, $"{name}  Lv.{hero.level} <color={SubColor}><size=24>/ {OwnedHero.MaxLevel}</size></color>");
-
-        Set(detail.statValues[0], $"{hero.MaxHP:0}");
-        Set(detail.statSubs[0], $"최대 {hero.stats.hpLv10:0}");
-        Set(detail.statValues[1], $"{hero.Attack:0.#}");
-        Set(detail.statSubs[1], $"최대 {hero.stats.attackLv10:0.#}");
-        Set(detail.statValues[2], $"{hero.CritChance:0.#}%");
-        Set(detail.statSubs[2], "");
-        Set(detail.statValues[3], $"{hero.CritDamage:0}%");
-        Set(detail.statSubs[3], "");
+        Set(info.statValues[0], $"{hero.MaxHP:0}");
+        Set(info.statSubs[0], $"최대 {hero.stats.hpLv10:0}");
+        Set(info.statValues[1], $"{hero.Attack:0.#}");
+        Set(info.statSubs[1], $"최대 {hero.stats.attackLv10:0.#}");
+        Set(info.statValues[2], $"{hero.CritChance:0.#}%");
+        Set(info.statSubs[2], "");
+        Set(info.statValues[3], $"{hero.CritDamage:0}%");
+        Set(info.statSubs[3], "");
 
         if (hero.activeSkill != null)
         {
             string mode = hero.activeSkill.activation == SkillActivation.OnRelease ? "내려놓기" : "자동";
-            Set(detail.activeText,
+            Set(info.activeText,
                 $"<b>{hero.activeSkill.displayName}</b>   <color={SubColor}>{mode} · " +
                 $"{HeroInfoText.WeaponReqKorean(hero.activeSkill.weaponRequirement)} · 쿨 {hero.activeSkill.cooldown:0}초</color>");
         }
-        else Set(detail.activeText, "-");
+        else Set(info.activeText, "-");
 
         string traitName = TraitCatalog.DisplayName(hero.traitId);
-        Set(detail.traitText, string.IsNullOrEmpty(traitName)
+        Set(info.traitText, string.IsNullOrEmpty(traitName)
             ? "-"
             : $"<color={TraitColor}><b>{traitName}</b></color>   <color={SubColor}>{TraitCatalog.Description(hero.traitId)}</color>");
 
-        Set(detail.weaponText, hero.weapon != null
-            ? hero.weapon.displayName
-            : $"<color={WarnColor}>미장착 — 기본 공격 불가</color>");
+        string weaponPart = hero.weapon != null
+            ? EquipmentGenerator.ShortName(hero.weapon)
+            : $"<color={WarnColor}>무기 없음</color>";
+        Set(info.equipSummaryText,
+            $"{weaponPart} <color={SubColor}>· 장비 {hero.equipment.Count} / {HeroRunInstance.MaxEquipSlots} — 자세한 내용은 [장비] 탭</color>");
+    }
 
-        if (hero.equipment.Count == 0)
+    void RefreshEquipTab(OwnedHero hero)
+    {
+        foreach (var slot in equipSlots)
+            if (slot != null) { slot.owner = this; slot.RefreshView(); }
+
+        // 보관소 목록 (최신 획득 위)
+        foreach (var go in spawnedRows)
+            if (go != null) Destroy(go);
+        spawnedRows.Clear();
+
+        var items = Armory.Items;
+        if (storageTitle != null) storageTitle.text = $"보관소  ({items.Count})";
+
+        if (storageListRoot != null && storageRowTemplate != null)
         {
-            Set(detail.equipText, $"<color={SubColor}>없음 (0 / {HeroRunInstance.MaxEquipSlots})</color>");
+            for (int i = items.Count - 1; i >= 0; i--)
+            {
+                if (items[i] == null) continue;
+                GameObject row = Instantiate(storageRowTemplate, storageRowTemplate.transform.parent);
+                row.SetActive(true);
+                spawnedRows.Add(row);
+
+                var rowUI = row.GetComponent<LobbyStorageRowUI>();
+                if (rowUI != null)
+                {
+                    rowUI.owner = this;
+                    rowUI.Bind(items[i]);
+                }
+            }
+        }
+
+        ShowDetailLine(hero == null ? "영웅을 선택하세요" : "슬롯이나 장비를 탭하면 자세히 표시됩니다");
+    }
+
+    // ---------- 장비 탭 상호작용 (슬롯/행이 호출) ----------
+
+    public void ShowDetailLine(string text)
+    {
+        if (detailLine != null) detailLine.text = text;
+    }
+
+    public void OnSlotClicked(LobbyEquipSlotUI slot)
+    {
+        var item = slot != null ? slot.Item : null;
+        ShowDetailLine(item != null ? item.displayName : "- 비어 있음 -");
+    }
+
+    /// <summary>보관소 행 드래그 종료 — 슬롯 위: 장착/교체 (무기칸엔 무기만)</summary>
+    public void OnRowDragEnd(LobbyStorageRowUI row, PointerEventData e)
+    {
+        if (row == null || row.item == null) return;
+        if (SelectedHero == null)
+        {
+            ShowDetailLine("영웅을 먼저 선택하세요");
+            return;
+        }
+
+        LobbyEquipSlotUI slot = FindUnderPointer<LobbyEquipSlotUI>(e);
+        if (slot == null) return; // 슬롯 밖 — 아무 일 없음
+
+        string itemName = row.item.displayName; // Refresh로 행이 파괴되기 전에 확보
+        bool ok;
+        if (row.item is WeaponDefinition weapon)
+            ok = slot.isWeaponSlot && EquipService.EquipWeapon(SelectedHero, weapon);
+        else
+            ok = !slot.isWeaponSlot && EquipService.EquipGearAt(SelectedHero, row.item, slot.slotIndex);
+
+        if (ok)
+        {
+            RefreshAll();
+            ShowDetailLine($"장착: {itemName}");
         }
         else
         {
-            var sb = new System.Text.StringBuilder();
-            for (int i = 0; i < hero.equipment.Count; i++)
-            {
-                if (i > 0) sb.Append('\n');
-                sb.Append(hero.equipment[i] != null ? hero.equipment[i].displayName : "-");
-            }
-            Set(detail.equipText, sb.ToString());
+            ShowDetailLine(row.item is WeaponDefinition ? "무기는 무기칸에만 장착할 수 있습니다"
+                                                        : "장비는 자유칸에만 장착할 수 있습니다");
         }
+    }
+
+    /// <summary>장착 슬롯 드래그 종료 — 보관소 목록 위: 해제</summary>
+    public void OnSlotDragEnd(LobbyEquipSlotUI slot, PointerEventData e)
+    {
+        if (slot == null || slot.Item == null || SelectedHero == null) return;
+
+        // 보관소 영역 위인지 판정 (스크롤/행 어디든)
+        bool overStorage = false;
+        if (EventSystem.current != null && storageListRoot != null)
+        {
+            raycastResults.Clear();
+            EventSystem.current.RaycastAll(e, raycastResults);
+            foreach (var r in raycastResults)
+            {
+                if (r.gameObject.transform.IsChildOf(storageListRoot.parent.parent)) // Scroll 루트 기준
+                {
+                    overStorage = true;
+                    break;
+                }
+            }
+        }
+        if (!overStorage) return;
+
+        string name = slot.Item.displayName;
+        bool ok = slot.isWeaponSlot
+            ? EquipService.UnequipWeapon(SelectedHero)
+            : EquipService.UnequipGear(SelectedHero, slot.slotIndex);
+
+        if (ok)
+        {
+            RefreshAll();
+            ShowDetailLine($"해제: {name}");
+        }
+    }
+
+    T FindUnderPointer<T>(PointerEventData e) where T : Component
+    {
+        if (EventSystem.current == null) return null;
+        raycastResults.Clear();
+        EventSystem.current.RaycastAll(e, raycastResults);
+        foreach (var r in raycastResults)
+        {
+            var c = r.gameObject.GetComponentInParent<T>();
+            if (c != null) return c;
+        }
+        return null;
     }
 
     static void Set(Text t, string value)

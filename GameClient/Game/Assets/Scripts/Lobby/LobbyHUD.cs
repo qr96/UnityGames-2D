@@ -9,12 +9,11 @@ public class LobbyHUD : MonoBehaviour
     public HeroManagePanel heroManagePanel; // 빌더가 자동 연결
     public SortiePanel sortiePanel;          // 빌더가 자동 연결
     public RecruitPanel recruitPanel;        // 빌더가 자동 연결 (영입 스펙 v1)
-    public ArmoryPanel armoryPanel;          // 빌더가 자동 연결 (장비 영속 v1)
-
     public void OnClickArmory()
     {
-        if (armoryPanel != null) armoryPanel.Open();
-        else Debug.LogWarning("[Lobby] ArmoryPanel이 연결되지 않았습니다 — [로비 보관소 UI 생성] 메뉴를 실행하세요.");
+        // 장비 관리 개편 ①: 보관소는 영웅 관리 [장비] 탭에 흡수 (열람 전용 패널 폐기)
+        if (heroManagePanel != null) heroManagePanel.OpenEquipTab();
+        else Debug.LogWarning("[Lobby] HeroManagePanel이 연결되지 않았습니다 — [로비 씬 구성]을 실행하세요.");
     }
 
     public void OnClickRecruit()

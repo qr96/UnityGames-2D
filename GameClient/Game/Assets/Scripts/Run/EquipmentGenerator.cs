@@ -219,6 +219,32 @@ public static class EquipmentGenerator
 
     public static string UniqueName(UniqueEffect effect) => UniqueNames[(int)effect];
 
+    /// <summary>생명 장구인가 — EquipmentDefinition에 타입 필드가 없어 깡스탯(modifiers)으로 분류 (§3: 장구 깡스탯은 공격 또는 HP 하나)</summary>
+    public static bool IsVitalGear(EquipmentDefinition item)
+    {
+        if (item == null || item.modifiers == null) return false;
+        foreach (var m in item.modifiers)
+            if (m.stat == StatType.MaxHP && m.flat > 0f) return true;
+        return false;
+    }
+
+    /// <summary>슬롯 칸용 축약명 — "★검" / "힘" / "생명" (전체 정보는 상세 줄/목록에서)</summary>
+    public static string ShortName(EquipmentDefinition item)
+    {
+        if (item == null) return "";
+        string star = item.isSpecial ? "★" : "";
+        if (item is WeaponDefinition w) return star + WeaponName(w.weaponType);
+        return star + (IsVitalGear(item) ? "생명" : "힘");
+    }
+
+    /// <summary>무기 타입 한글명 (프로필 표 공유)</summary>
+    public static string WeaponName(WeaponType type)
+    {
+        foreach (var p in Weapons)
+            if (p.type == type) return p.name;
+        return type.ToString();
+    }
+
     /// <summary>표시명 — 슬롯 UI가 이름 문자열만 보여주므로 내용 요약을 이름에 담음 (전용 툴팁 전까지)</summary>
     static string ComposeName(bool special, string baseName, string flatText, string optionText, string uniqueText)
     {
