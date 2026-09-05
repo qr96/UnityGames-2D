@@ -82,20 +82,94 @@ public static class GameUIBuilder
         tabRT.sizeDelta = new Vector2(150f, 60f);
         StretchText(MakeText(tabGO.transform, "Label", "장비", 30));
 
-        // 장비 슬롯 그리드 (2행 x 4열, GridLayoutGroup — 슬롯 수/간격 자유 조정 가능)
-        var gridGO = new GameObject("SlotGrid", typeof(RectTransform), typeof(GridLayoutGroup));
-        gridGO.transform.SetParent(invGO.transform, false);
-        var gridRT = gridGO.GetComponent<RectTransform>();
-        SetAnchored(gridRT, new Vector2(0.5f, 0.5f), new Vector2(0f, -35f), new Vector2(760f, 370f));
-        var grid = gridGO.GetComponent<GridLayoutGroup>();
-        grid.cellSize = new Vector2(170f, 170f);
-        grid.spacing = new Vector2(22f, 22f);
-        grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-        grid.constraintCount = 4;
-        grid.childAlignment = TextAnchor.MiddleCenter;
+        // 장비 목록 (스크롤 — 구 8칸 격자는 9번째부터 잘리는 결함으로 폐기, 전량 표시)
+        var scrollGO = new GameObject("Scroll", typeof(RectTransform), typeof(ScrollRect), typeof(Image));
+        scrollGO.transform.SetParent(invGO.transform, false);
+        SetAnchored(scrollGO.GetComponent<RectTransform>(), new Vector2(0.5f, 0.5f), new Vector2(0f, -38f), new Vector2(960f, 360f));
+        scrollGO.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.25f);
 
-        for (int i = 0; i < 8; i++)
-            MakeItemSlot<EquipmentSlot>(gridGO.transform, $"EquipSlot{i}", null, 24);
+        var viewportGO = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(Mask));
+        viewportGO.transform.SetParent(scrollGO.transform, false);
+        var vrt = viewportGO.GetComponent<RectTransform>();
+        vrt.anchorMin = Vector2.zero;
+        vrt.anchorMax = Vector2.one;
+        vrt.offsetMin = new Vector2(0f, 0f);
+        vrt.offsetMax = new Vector2(-26f, 0f); // 스크롤바 자리
+        viewportGO.GetComponent<Image>().color = Color.white;
+        viewportGO.GetComponent<Mask>().showMaskGraphic = false;
+
+        var contentGO = new GameObject("Content", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+        contentGO.transform.SetParent(viewportGO.transform, false);
+        var cort = contentGO.GetComponent<RectTransform>();
+        cort.anchorMin = new Vector2(0.5f, 1f);
+        cort.anchorMax = new Vector2(0.5f, 1f);
+        cort.pivot = new Vector2(0.5f, 1f);
+        cort.sizeDelta = new Vector2(920f, 0f);
+        var vlayout = contentGO.GetComponent<VerticalLayoutGroup>();
+        vlayout.spacing = 8f;
+        vlayout.padding = new RectOffset(0, 0, 8, 8);
+        vlayout.childAlignment = TextAnchor.UpperCenter;
+        vlayout.childControlWidth = false;
+        vlayout.childControlHeight = false;
+        vlayout.childForceExpandWidth = false;
+        vlayout.childForceExpandHeight = false;
+        contentGO.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        // 스크롤바 — 행 드래그는 장비 드래그가 가져가므로 스크롤 조작은 이 바가 담당
+        var sbGO = new GameObject("Scrollbar", typeof(RectTransform), typeof(Image), typeof(Scrollbar));
+        sbGO.transform.SetParent(scrollGO.transform, false);
+        var sbrt = sbGO.GetComponent<RectTransform>();
+        sbrt.anchorMin = new Vector2(1f, 0f);
+        sbrt.anchorMax = new Vector2(1f, 1f);
+        sbrt.pivot = new Vector2(1f, 0.5f);
+        sbrt.anchoredPosition = Vector2.zero;
+        sbrt.sizeDelta = new Vector2(22f, 0f);
+        sbGO.GetComponent<Image>().color = new Color(0.10f, 0.11f, 0.16f, 0.9f);
+        var sb = sbGO.GetComponent<Scrollbar>();
+        sb.direction = Scrollbar.Direction.BottomToTop;
+        var handleGO = MakeImage(sbGO.transform, "Handle", new Color(0.38f, 0.42f, 0.55f, 0.95f), rounded: true);
+        var hrt = handleGO.GetComponent<RectTransform>();
+        hrt.anchorMin = Vector2.zero;
+        hrt.anchorMax = Vector2.one;
+        hrt.offsetMin = new Vector2(3f, 3f);
+        hrt.offsetMax = new Vector2(-3f, -3f);
+        sb.handleRect = hrt;
+        sb.targetGraphic = handleGO.GetComponent<Image>();
+
+        var scroll = scrollGO.GetComponent<ScrollRect>();
+        scroll.viewport = vrt;
+        scroll.content = cort;
+        scroll.horizontal = false;
+        scroll.vertical = true;
+        scroll.movementType = ScrollRect.MovementType.Clamped;
+        scroll.verticalScrollbar = sb;
+        scroll.scrollSensitivity = 30f;
+
+        // 행 템플릿 — EquipmentSlot 1개 = 목록 한 줄 (아이콘 + 전체 이름, 드래그 소스)
+        var rowGO = MakeImage(contentGO.transform, "RowTemplate", new Color(0.14f, 0.17f, 0.25f, 0.92f), rounded: true);
+        rowGO.GetComponent<RectTransform>().sizeDelta = new Vector2(910f, 74f);
+        var rowSlot = rowGO.AddComponent<EquipmentSlot>();
+
+        var iconGO = MakeImage(rowGO.transform, "Icon", new Color(0.55f, 0.60f, 0.75f, 0.95f), rounded: true);
+        var icrt = iconGO.GetComponent<RectTransform>();
+        icrt.anchorMin = icrt.anchorMax = new Vector2(0f, 0.5f);
+        icrt.pivot = new Vector2(0f, 0.5f);
+        icrt.anchoredPosition = new Vector2(12f, 0f);
+        icrt.sizeDelta = new Vector2(50f, 50f);
+        rowSlot.icon = iconGO.GetComponent<Image>();
+
+        Text rowLabel = MakeText(rowGO.transform, "Label", "", 26);
+        rowLabel.alignment = TextAnchor.MiddleLeft;
+        var rlrt = rowLabel.rectTransform;
+        rlrt.anchorMin = Vector2.zero;
+        rlrt.anchorMax = Vector2.one;
+        rlrt.offsetMin = new Vector2(78f, 0f);
+        rlrt.offsetMax = new Vector2(-40f, 0f);
+        rowSlot.label = rowLabel;
+
+        rowGO.SetActive(false);
+        invPanel.listRoot = contentGO.transform;
+        invPanel.rowTemplate = rowGO;
 
         // 전투 시작 버튼 (인벤토리 패널 위)
         Button startBtn = MakeButton(root, "StartButton", "전투 시작 ▶", new Color(0.22f, 0.62f, 0.40f), 38);
@@ -246,7 +320,7 @@ public static class GameUIBuilder
         panelGO.transform.SetParent(canvas.transform, false);
         var prt = panelGO.GetComponent<RectTransform>();
         // 상단 배치 (3:4 개편): 전투 준비 중 상단 필드는 빈 공간 — 하단의 영웅/전투 시작 버튼과 분리
-        SetAnchored(prt, new Vector2(0.5f, 1f), new Vector2(0f, -420f), new Vector2(900f, 340f));
+        SetAnchored(prt, new Vector2(0.5f, 1f), new Vector2(0f, -430f), new Vector2(900f, 370f));
 
         var layout = panelGO.GetComponent<HorizontalLayoutGroup>();
         layout.spacing = 14f;
@@ -260,18 +334,26 @@ public static class GameUIBuilder
 
         // ---- 파티원 항목 템플릿 (비활성 — 스타일은 에디터에서 수정) ----
         var entry = MakeImage(panelGO.transform, "EntryTemplate", new Color(0.06f, 0.07f, 0.10f, 0.85f), rounded: true);
-        entry.GetComponent<RectTransform>().sizeDelta = new Vector2(160f, 330f);
+        entry.GetComponent<RectTransform>().sizeDelta = new Vector2(160f, 360f); // 무기칸 추가분
 
         Text nameText = MakeText(entry.transform, "Name", "이름", 26);
-        SetAnchored(nameText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -26f), new Vector2(150f, 40f));
+        SetAnchored(nameText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -22f), new Vector2(150f, 36f));
 
+        // 무기 전용 칸 (무기 스펙 v2 — 금색 계열, 무기만 장착 가능)
+        var weaponSlot = MakeImage(entry.transform, "WeaponSlot", new Color(0.24f, 0.20f, 0.12f, 0.90f), rounded: true);
+        SetAnchored(weaponSlot.GetComponent<RectTransform>(), new Vector2(0.5f, 1f),
+            new Vector2(0f, -72f), new Vector2(140f, 62f));
+        weaponSlot.AddComponent<HeroEquipSlotUI>().isWeaponSlot = true;
+        StretchText(MakeText(weaponSlot.transform, "Label", "", 20));
+
+        // 자유 장비칸 3 (종류 제한 없음)
         for (int i = 0; i < 3; i++)
         {
             var slot = MakeImage(entry.transform, $"Slot{i}", new Color(0.12f, 0.13f, 0.19f, 0.90f), rounded: true);
             SetAnchored(slot.GetComponent<RectTransform>(), new Vector2(0.5f, 1f),
-                new Vector2(0f, -90f - i * 90f), new Vector2(140f, 80f));
+                new Vector2(0f, -142f - i * 70f), new Vector2(140f, 62f));
             slot.AddComponent<HeroEquipSlotUI>();
-            StretchText(MakeText(slot.transform, "Label", "", 22));
+            StretchText(MakeText(slot.transform, "Label", "", 20));
         }
         entry.SetActive(false);
         panel.entryTemplate = entry;

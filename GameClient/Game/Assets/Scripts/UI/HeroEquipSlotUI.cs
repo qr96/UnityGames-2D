@@ -14,12 +14,23 @@ public class HeroEquipSlotUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     public Text label;
     [HideInInspector] public PartyEquipPanel owner;
 
+    [Tooltip("무기 전용 슬롯 (무기 스펙 v2) — 빌더가 설정. 무기만 장착/이동 가능")]
+    public bool isWeaponSlot;
+
     static readonly Color FilledColor = new Color(0.30f, 0.45f, 0.85f, 0.95f);
     static readonly Color EmptyColor = new Color(0.12f, 0.13f, 0.19f, 0.90f);
+    static readonly Color WeaponFilledColor = new Color(0.80f, 0.62f, 0.25f, 0.95f); // 무기 = 금색 계열
+    static readonly Color WeaponEmptyColor = new Color(0.24f, 0.20f, 0.12f, 0.90f);
 
     public HeroRunInstance Hero { get; private set; }
     public int SlotIndex { get; private set; }
-    public bool HasItem => Hero != null && SlotIndex < Hero.equipment.Count;
+
+    public bool HasItem => Hero != null &&
+        (isWeaponSlot ? Hero.weapon != null : SlotIndex < Hero.equipment.Count);
+
+    /// <summary>슬롯의 현재 장비 (무기 슬롯이면 무기)</summary>
+    public EquipmentDefinition Item =>
+        !HasItem ? null : (isWeaponSlot ? Hero.weapon : Hero.equipment[SlotIndex]);
 
     Image frame;
     RectTransform ghost;
@@ -41,9 +52,15 @@ public class HeroEquipSlotUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     {
         bool filled = HasItem;
         if (label != null)
-            label.text = filled ? Hero.equipment[SlotIndex].displayName : "";
+        {
+            // 빈 무기 슬롯은 "무기" 자리 표시 — 슬롯 성격을 드러냄
+            label.text = filled ? Item.displayName : (isWeaponSlot ? "무기" : "");
+            label.color = filled ? Color.white : new Color(1f, 1f, 1f, 0.35f);
+        }
         if (frame != null)
-            frame.color = filled ? FilledColor : EmptyColor;
+            frame.color = isWeaponSlot
+                ? (filled ? WeaponFilledColor : WeaponEmptyColor)
+                : (filled ? FilledColor : EmptyColor);
     }
 
     // ---------- 장착된 장비 드래그 (영웅 간 이전 / 탈착) ----------
@@ -78,7 +95,7 @@ public class HeroEquipSlotUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         var go = new GameObject("EquipDragGhost", typeof(Image));
         go.transform.SetParent(parentCanvas.rootCanvas.transform, false);
         var img = go.GetComponent<Image>();
-        img.color = FilledColor;
+        img.color = isWeaponSlot ? WeaponFilledColor : FilledColor;
         img.raycastTarget = false;
         if (frame != null)
         {
@@ -102,7 +119,7 @@ public class HeroEquipSlotUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         t.alignment = TextAnchor.MiddleCenter;
         t.color = Color.white;
         t.raycastTarget = false;
-        t.text = Hero.equipment[SlotIndex].displayName;
+        t.text = Item != null ? Item.displayName : "";
         var trt = t.rectTransform;
         trt.anchorMin = Vector2.zero;
         trt.anchorMax = Vector2.one;

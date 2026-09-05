@@ -16,9 +16,14 @@ public class EquipmentSlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
 
     EquipmentDefinition item;
     Canvas dragCanvas;
+    Image frame; // 행/슬롯 배경 — 특별 장비 틴트용
+
+    static readonly Color NormalFrame = new Color(0.14f, 0.17f, 0.25f, 0.92f);
+    static readonly Color SpecialFrame = new Color(0.32f, 0.27f, 0.12f, 0.95f); // ★특별 = 금색 계열
 
     void Awake()
     {
+        frame = GetComponent<Image>();
         // 인스펙터 연결이 비어 있으면 자식에서 자동 탐색 ("Icon" 오브젝트 + 그 안의 Text)
         if (icon == null)
         {
@@ -35,7 +40,9 @@ public class EquipmentSlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
         bool has = item != null;
         if (icon != null) icon.gameObject.SetActive(has);
         if (label != null)
-            label.text = !has ? "" : (count > 1 ? $"{item.displayName}\nx{count}" : item.displayName);
+            label.text = !has ? "" : (count > 1 ? $"{item.displayName}  x{count}" : item.displayName);
+        if (frame != null && has)
+            frame.color = item.isSpecial ? SpecialFrame : NormalFrame;
         ResetIcon();
     }
 

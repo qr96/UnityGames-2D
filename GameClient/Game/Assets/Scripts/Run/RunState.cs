@@ -136,6 +136,19 @@ public class RunState
         return true;
     }
 
+    /// <summary>무기 슬롯 → 다른 영웅의 무기 슬롯 (교환 — 대상이 비어 있으면 단순 이전).</summary>
+    public bool MoveWeapon(HeroRunInstance from, HeroRunInstance to)
+    {
+        if (inBattle) return false; // 전투 중 장비 변경 불가 (GDD 8)
+        if (from == null || to == null || from == to) return false;
+        if (from.isDead || to.isDead || from.weapon == null) return false;
+
+        WeaponDefinition a = from.weapon;
+        from.weapon = to.weapon; // null이면 미장착으로
+        to.weapon = a;
+        return true;
+    }
+
     /// <summary>무기 슬롯 → 인벤토리. 미장착 상태 허용 (기본 공격 불가 상태).</summary>
     public bool UnequipWeapon(HeroRunInstance hero)
     {

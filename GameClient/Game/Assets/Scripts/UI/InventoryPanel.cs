@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 /// <summary>
 /// 전투 준비(배치) 화면의 인벤토리 패널 — [장비] 탭.
@@ -18,52 +19,63 @@ public class InventoryPanel : MonoBehaviour
     [Tooltip("전장의 영웅 몸통에 직접 드롭할 때의 판정 반경")]
     public float heroDropRadius = 1.1f;
 
-    readonly List<EquipmentSlot> slots = new List<EquipmentSlot>();
+    [Header("목록 UI (빌더가 자동 연결) — 고정 격자 폐기, 보관 장비 전량 표시")]
+    public Transform listRoot;       // ScrollRect의 Content
+    public GameObject rowTemplate;   // 비활성 행 템플릿 (EquipmentSlot 포함)
+
+    readonly List<GameObject> spawnedRows = new List<GameObject>();
     readonly List<EquipmentDefinition> displayed = new List<EquipmentDefinition>();
     static readonly List<RaycastResult> raycastResults = new List<RaycastResult>();
 
     Camera cam;
-
-    void Awake()
-    {
-        // 에디터에서 만든 자식 슬롯을 자동 수집 — 하이어라키 순서 = 슬롯 순서
-        slots.Clear();
-        var found = GetComponentsInChildren<EquipmentSlot>(true);
-        for (int i = 0; i < found.Length; i++)
-        {
-            found[i].panel = this;
-            found[i].index = i;
-            slots.Add(found[i]);
-        }
-    }
 
     void OnEnable()
     {
         Refresh();
     }
 
-    /// <summary>배치 진입/장비 변동 시 호출 — 인벤토리 전체를 종류별 집계로 다시 그림</summary>
+    /// <summary>
+    /// 배치 진입/장비 변동 시 호출 — 보관 장비 '전량'을 목록 행으로 그림.
+    /// (구 8칸 고정 격자는 9번째 아이템부터 표시가 잘리는 결함 — 무기 미표시의 원인)
+    /// 최신 획득이 맨 위.
+    /// </summary>
     public void Refresh()
     {
-        RunState run = RunManager.Instance != null ? RunManager.Instance.Run : null;
-
+        foreach (var go in spawnedRows)
+            if (go != null) Destroy(go);
+        spawnedRows.Clear();
         displayed.Clear();
+
+        RunState run = RunManager.Instance != null ? RunManager.Instance.Run : null;
+        if (run == null || listRoot == null || rowTemplate == null) return;
+
+        // 동일 인스턴스 집계 (생성 장비는 전부 개별이라 대부분 x1) — 최신 획득이 위로
         var counts = new Dictionary<EquipmentDefinition, int>();
-        if (run != null)
+        for (int i = run.inventory.Count - 1; i >= 0; i--)
         {
-            foreach (var item in run.inventory)
+            var item = run.inventory[i];
+            if (item == null) continue;
+            if (counts.TryGetValue(item, out int c)) counts[item] = c + 1;
+            else { counts[item] = 1; displayed.Add(item); }
+        }
+
+        for (int i = 0; i < displayed.Count; i++)
+        {
+            GameObject row = Instantiate(rowTemplate, rowTemplate.transform.parent);
+            row.SetActive(true);
+            spawnedRows.Add(row);
+
+            var slot = row.GetComponent<EquipmentSlot>();
+            if (slot != null)
             {
-                if (item == null) continue;
-                if (counts.TryGetValue(item, out int c)) counts[item] = c + 1;
-                else { counts[item] = 1; displayed.Add(item); } // 첫 등장 순서 유지
+                slot.panel = this;
+                slot.index = i;
+                slot.SetItem(displayed[i], counts[displayed[i]]);
             }
         }
 
-        for (int i = 0; i < slots.Count; i++)
-        {
-            if (i < displayed.Count) slots[i].SetItem(displayed[i], counts[displayed[i]]);
-            else slots[i].SetItem(null, 0);
-        }
+        var scroll = listRoot.GetComponentInParent<ScrollRect>(true);
+        if (scroll != null) scroll.verticalNormalizedPosition = 1f; // 열 때 맨 위 (최신)
     }
 
     /// <summary>슬롯의 장비를 드롭. 성공 시 true (EquipmentSlot이 드래그 종료 시 호출).</summary>
@@ -78,10 +90,13 @@ public class InventoryPanel : MonoBehaviour
         HeroRunInstance target = null;
 
         // 1순위: UI의 영웅 장비칸 위에 드롭 (점유 칸이면 기존 장비 탈착·교체)
+        // 무기칸엔 무기만 — 일반 장비를 무기칸에 놓으면 거부 (무기 스펙 v2)
         HeroEquipSlotUI slotUI = FindHeroSlotUnderPointer(e);
         if (slotUI != null && slotUI.Hero != null)
         {
-            equipped = run.EquipAt(slotUI.Hero, item, slotUI.SlotIndex);
+            if (slotUI.isWeaponSlot && !(item is WeaponDefinition))
+                return false; // 타입 불일치 → 제자리 복귀
+            equipped = run.EquipAt(slotUI.Hero, item, slotUI.SlotIndex); // 무기는 내부에서 무기칸으로 자동 라우팅
             target = slotUI.Hero;
         }
         // 2순위: 전장의 영웅 몸통 근처에 드롭 → 빈 칸에 장착

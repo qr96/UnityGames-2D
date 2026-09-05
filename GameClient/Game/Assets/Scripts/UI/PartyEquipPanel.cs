@@ -60,12 +60,16 @@ public class PartyEquipPanel : MonoBehaviour
                 nameText.color = heroInst.definition.color;
             }
 
-            // 슬롯 바인딩 (하이어라키 순서 = 슬롯 0,1,2)
+            // 슬롯 바인딩 — 무기 슬롯(isWeaponSlot)과 자유 슬롯(하이어라키 순서 = 0,1,2) 분리
             HeroEquipSlotUI[] slotUIs = entry.GetComponentsInChildren<HeroEquipSlotUI>(true);
-            for (int i = 0; i < slotUIs.Length && i < HeroRunInstance.MaxEquipSlots; i++)
+            int freeIndex = 0;
+            foreach (HeroEquipSlotUI slotUI in slotUIs)
             {
-                slotUIs[i].owner = this;
-                slotUIs[i].Bind(heroInst, i);
+                slotUI.owner = this;
+                if (slotUI.isWeaponSlot)
+                    slotUI.Bind(heroInst, 0);
+                else if (freeIndex < HeroRunInstance.MaxEquipSlots)
+                    slotUI.Bind(heroInst, freeIndex++);
             }
         }
     }
@@ -101,25 +105,37 @@ public class PartyEquipPanel : MonoBehaviour
 
         bool moved = false;
         HeroRunInstance otherHero = null;
+        bool fromWeapon = fromSlot.isWeaponSlot;
 
         if (targetSlot != null && targetSlot.Hero != null)
         {
-            // 1) 다른 장비칸 → 이전/교환
-            moved = run.MoveEquipped(fromHero, fromIndex, targetSlot.Hero, targetSlot.SlotIndex);
-            otherHero = targetSlot.Hero;
+            // 1) 다른 장비칸 — 무기는 무기칸끼리만, 일반 장비는 자유칸끼리만 (무기 스펙 v2)
+            if (fromWeapon && targetSlot.isWeaponSlot)
+            {
+                moved = run.MoveWeapon(fromHero, targetSlot.Hero); // 교환 (빈 칸이면 이전)
+                otherHero = targetSlot.Hero;
+            }
+            else if (!fromWeapon && !targetSlot.isWeaponSlot)
+            {
+                moved = run.MoveEquipped(fromHero, fromIndex, targetSlot.Hero, targetSlot.SlotIndex);
+                otherHero = targetSlot.Hero;
+            }
+            // 타입 불일치 → moved=false → 제자리 복귀
         }
         else if (overInventory)
         {
-            // 2) 인벤토리 위 → 탈착
-            moved = run.Unequip(fromHero, fromIndex);
+            // 2) 인벤토리 위 → 탈착 (무기 탈착 = 기본 공격 불가 상태 허용)
+            moved = fromWeapon ? run.UnequipWeapon(fromHero) : run.Unequip(fromHero, fromIndex);
         }
         else
         {
-            // 3) 전장의 영웅 몸통 → 그 영웅의 빈 칸으로 이전
+            // 3) 전장의 영웅 몸통 → 무기는 그 영웅의 무기칸으로(교환), 장비는 빈 자유칸으로
             Hero body = FindHeroAt(ScreenToWorld(e.position));
             if (body != null && body.Runtime != null && body.Runtime != fromHero)
             {
-                moved = run.MoveEquipped(fromHero, fromIndex, body.Runtime, body.Runtime.equipment.Count);
+                moved = fromWeapon
+                    ? run.MoveWeapon(fromHero, body.Runtime)
+                    : run.MoveEquipped(fromHero, fromIndex, body.Runtime, body.Runtime.equipment.Count);
                 otherHero = body.Runtime;
             }
         }
